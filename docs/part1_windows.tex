@@ -1,0 +1,252 @@
+% ======================================================================
+\section{Running it on Windows with VS Code}\label{sec:windows}
+% ======================================================================
+
+Nothing here is exotic. If you have set up a virtual environment for a Flask
+project you already know this workflow; the only unusual part is that a couple
+of the experiments spend a few minutes on CPU.
+
+\subsection{Prerequisites}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.6cm}
+                 >{\raggedright\arraybackslash}p{4.0cm}
+                 >{\raggedright\arraybackslash}p{7.6cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Thing} &
+{\sffamily\bfseries\color{conclaveblue}Version} &
+{\sffamily\bfseries\color{conclaveblue}Why} \\
+\midrule
+Python & \textbf{3.10 -- 3.12} & 3.13 still misses \code{lightgbm} wheels on some Windows builds \\
+VS Code & any current & \\
+Python extension & \code{ms-python.python} & brings \code{debugpy} and the Testing panel \\
+Disk & $\approx$\,700\,MB & mostly \code{scikit-learn} and \code{lightgbm} wheels \\
+Network & first install only & the framework never touches the network at runtime \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent There is deliberately no CUDA, no GPU, and no API key anywhere in
+this list.
+
+\subsection{One-time setup}
+
+Open the \file{conclave} folder in VS Code --- \textbf{File\,$\rightarrow$\,Open
+Folder}, and pick the folder that \emph{contains} \file{pyproject.toml}, not its
+parent. This matters: pointing VS Code at the parent is the single most common
+reason \code{pytest} later collects zero tests.
+
+Then open the integrated terminal with \key{Ctrl} + \key{`}:
+
+\begin{codebox}[PowerShell --- one time]
+\begin{lstlisting}[style=shell]
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+python -m pip install --upgrade pip
+pip install -e ".[boost,experiments,dev]"
+\end{lstlisting}
+\end{codebox}
+
+\noindent Your prompt should now start with \code{(.venv)}.
+
+\begin{warnbox}[If PowerShell refuses to run the activation script]
+Windows blocks unsigned scripts by default. Unblock it for this terminal only:
+\begin{lstlisting}[style=shell]
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+\end{lstlisting}
+\code{-Scope Process} means the change dies with the terminal window, which is
+exactly what you want --- do not use \code{-Scope CurrentUser} for this.
+\end{warnbox}
+
+\subsubsection{What the three extras install}
+
+\code{pip install -e ".[boost,experiments,dev]"} pulls three optional groups on
+top of the core dependencies:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm}
+                 >{\raggedright\arraybackslash}p{5.6cm}
+                 >{\raggedright\arraybackslash}p{7.2cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Extra} &
+{\sffamily\bfseries\color{conclaveblue}Packages} &
+{\sffamily\bfseries\color{conclaveblue}Needed for} \\
+\midrule
+(core) & numpy, scipy, scikit-learn, joblib, psutil & the framework itself \\
+\code{boost} & lightgbm, xgboost & the gradient-boosted committee member \\
+\code{experiments} & pandas, pyarrow, matplotlib & running \file{experiments/} and drawing figures \\
+\code{dev} & pytest & the test suite \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{okbox}[LightGBM is optional by design]
+If \code{lightgbm} will not install, the framework does not break. \code{ToolRouter}
+falls back to scikit-learn's \code{HistGradientBoostingClassifier}, which costs
+about half a point of routing accuracy. You can verify which one you got:
+\begin{lstlisting}[style=py]
+from conclave.brain.router import ToolRouter
+print(list(ToolRouter()._default_members()))   # ['lgbm', ...] or ['hgb', ...]
+\end{lstlisting}
+\end{okbox}
+
+\subsection{Point VS Code at the interpreter}
+
+Press \key{Ctrl}+\key{Shift}+\key{P} $\rightarrow$ \textbf{Python: Select
+Interpreter} $\rightarrow$ choose the one under \file{.venv}.
+
+The repository ships a \file{.vscode/settings.json} that already sets this,
+enables pytest, and hides \file{\_\_pycache\_\_} from the explorer, so in most
+cases it happens by itself:
+
+\begin{codebox}[.vscode/settings.json --- the parts that matter]
+\begin{lstlisting}[style=shell]
+"python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+"python.testing.pytestEnabled": true,
+"python.testing.pytestArgs": ["tests"],
+"python.analysis.extraPaths": ["${workspaceFolder}"]
+\end{lstlisting}
+\end{codebox}
+
+\subsection{Check it works}
+
+\begin{codebox}[PowerShell]
+\begin{lstlisting}[style=shell]
+pytest -q
+\end{lstlisting}
+\end{codebox}
+
+\begin{okbox}[Expected]
+\textbf{14 passed} in roughly six seconds. Four \code{ConvergenceWarning}s from
+\code{SGDClassifier} are normal --- that member is deliberately capped at 25
+iterations because it is a committee member, not a soloist.
+\end{okbox}
+
+\noindent The 14 tests are two distinct groups, and the distinction is worth
+understanding:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.3cm}
+                 >{\raggedright\arraybackslash}p{10.9cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}File} &
+{\sffamily\bfseries\color{conclaveblue}What it protects} \\
+\midrule
+\file{tests/test\_smoke.py} & The framework: uncertainty maths, planner, tool
+registry, memory, a full agent episode, constraint escalation. Nine tests. \\
+\file{tests/test\_paper\_claims.py} & Every number quoted in the paper, checked
+against \file{results/*.json}. Five tests. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keybox}[Why the second group exists]
+\file{test\_paper\_claims.py} fails \emph{on purpose} if you re-run an experiment
+and a number moves. That is not a broken test --- it is the mechanism that stops
+the paper and the code drifting apart. When it fails, look at the diff and
+decide which one is wrong before you touch either.
+\end{keybox}
+
+VS Code's Testing panel (the conical-flask icon in the sidebar) picks these up
+automatically and lets you run them one at a time.
+
+\subsection{The debugger, which is where the real understanding happens}
+
+The repository ships eight launch configurations in \file{.vscode/launch.json}.
+Press \key{F5} and pick one from the dropdown. The most useful by a wide margin:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{6.2cm}
+                 >{\raggedright\arraybackslash}p{9.0cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Configuration} &
+{\sffamily\bfseries\color{conclaveblue}What it does} \\
+\midrule
+Demo: watch an episode & The agent decides tick by tick with the network failing \\
+Demo: tool routing (interactive) & Type a request, watch it score every tool \\
+Exp 3: connectivity loss & The headline experiment, about three minutes \\
+\textbf{Debug: break inside Agent.decide} & Same as the episode demo but with
+\code{justMyCode: false}, so you can step into scikit-learn \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keybox}[The single most useful breakpoint in the project]
+Open \file{conclave/core/agent.py}, find \code{Agent.decide}, and put a breakpoint
+on the line
+\begin{lstlisting}[style=py]
+outcome = self.gate(rep.stats)
+\end{lstlisting}
+Launch \textbf{Debug: break inside Agent.decide}. When it stops, inspect
+\code{rep} in the Variables pane. You get \code{rep.member\_probs} --- what each
+committee member believed --- and \code{rep.stats}, the full uncertainty
+decomposition for that one decision. Everything in \S\ref{sec:math} is visible
+there as concrete numbers.
+\end{keybox}
+
+\subsection{Reproducing the paper}
+
+\begin{codebox}[PowerShell --- times are for a modest laptop CPU]
+\begin{lstlisting}[style=shell]
+python experiments/exp3_sequential.py    # ~3 min, no data needed
+python experiments/exp5_uncertainty.py   # ~4 min, no data needed
+python experiments/exp4_edge.py          # ~1 min, no data needed
+python experiments/exp1_tool_routing.py  # ~2 min, needs data/bfcl
+python experiments/exp2_humaid.py 12 14  # ~4 min, needs data/humaid
+python experiments/make_figures.py       # redraws paper/figures/
+
+python scripts/run_all.py                # or all of the above
+\end{lstlisting}
+\end{codebox}
+
+\noindent \file{data/} is already in the repository (19\,MB), so every one of
+these works offline right now. To re-fetch it: \code{python scripts/fetch\_data.py}.
+
+Each experiment writes a JSON artefact to \file{results/} recording platform,
+seed and git commit, so any number can be traced back to the run that produced it.
+
+\begin{warnbox}[One genuine Windows difference]
+\file{exp4\_edge.py} enforces a RAM ceiling using \code{RLIMIT\_AS}, which is
+POSIX-only. On Windows the code detects this, prints a notice, and reports
+thread caps alone --- the memory ceiling becomes advisory rather than enforced.
+
+Everything else is identical across platforms. But do not report an
+\emph{enforced} memory ceiling in a paper table from a Windows run, because on
+Windows it was not enforced. \S\ref{sec:pi} shows how to get a genuinely
+enforced ceiling using containers.
+\end{warnbox}
+
+\subsection{When something breaks}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.6cm}
+                 >{\raggedright\arraybackslash}p{9.6cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Symptom} &
+{\sffamily\bfseries\color{conclaveblue}Cause and fix} \\
+\midrule
+\code{ModuleNotFoundError: conclave} & The venv is not active, or you skipped
+\code{pip install -e .}. Check for \code{(.venv)} in the prompt. \\
+\code{lightgbm} fails to install & You are on Python 3.13. Use 3.12, or accept
+the automatic \code{HistGradientBoosting} fallback. \\
+\code{pytest} collects 0 tests & VS Code has the parent folder open. Reopen the
+\file{conclave} folder itself. \\
+Activation script blocked & \code{Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass} \\
+Experiments feel slow & Expected. \code{exp3} runs 3{,}600 episodes and trains a
+committee for each configuration. \\
+\code{test\_paper\_claims} fails & You re-ran an experiment and a number moved.
+The test is doing its job --- inspect the diff. \\
+\bottomrule
+\end{tabular}
+\end{center}

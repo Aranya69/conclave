@@ -1,0 +1,92 @@
+% ======================================================================
+\section{Orientation: what you are looking at}
+% ======================================================================
+
+Before the instructions, a map. CONCLAVE replaces one component of a conventional
+AI agent --- the language model at the centre --- with a committee of small
+machine-learning models. Everything else an agent needs is still there.
+
+\begin{center}
+\begin{tikzpicture}[
+  font=\sffamily\footnotesize,
+  box/.style={draw=conclaveblue!55, fill=conclavebg, rounded corners=2pt,
+              minimum height=8.5mm, inner xsep=5pt, align=center},
+  core/.style={draw=conclavelight, fill=conclavelight!12, line width=1pt,
+               rounded corners=2pt, minimum height=11mm, inner xsep=6pt,
+               align=center},
+  gate/.style={draw=conclaveamber, fill=conclaveamber!10, rounded corners=2pt,
+               minimum height=8.5mm, inner xsep=5pt, align=center},
+  ar/.style={-{Stealth[length=2mm]}, conclaveblue!70, line width=0.8pt}]
+
+\node[box] (obs)  {Observation\\{\scriptsize sensors + text}};
+\node[box, right=7mm of obs] (feat) {Featurise\\{\scriptsize hashing + scaling}};
+\node[core, right=7mm of feat] (brain) {\textbf{Ensemble brain}\\{\scriptsize 3--4 small models}};
+\node[box, right=7mm of brain] (mem) {Episodic\\prior};
+\node[gate, right=7mm of mem] (gt) {Uncertainty\\gate};
+\node[box, right=7mm of gt] (act) {Act / abstain\\escalate};
+
+\draw[ar] (obs)--(feat); \draw[ar] (feat)--(brain); \draw[ar] (brain)--(mem);
+\draw[ar] (mem)--(gt);   \draw[ar] (gt)--(act);
+
+\node[draw=conclaveteal!60, fill=conclaveteal!8, rounded corners=2pt,
+      below=8mm of brain, minimum height=7mm, inner xsep=5pt,
+      align=center, font=\sffamily\scriptsize] (con)
+      {Hard constraints \& planner};
+\draw[ar, conclaveteal] (con) -- (gt);
+\draw[ar, conclaveteal, dashed] (brain) -- (con);
+
+\begin{scope}[on background layer]
+  \node[fit=(obs)(act), draw=conclaverule, line width=0.8pt, rounded corners=3pt,
+        inner sep=7pt] {};
+\end{scope}
+\node[anchor=west, font=\sffamily\scriptsize\bfseries, color=conclavegrey]
+      at ([yshift=6.5mm,xshift=-4mm]obs.north west) {ONE TICK OF THE AGENT LOOP};
+\end{tikzpicture}
+\end{center}
+
+\subsection{The seven objects you will actually touch}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.28}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm}
+                 >{\raggedright\arraybackslash}p{7.0cm}
+                 >{\raggedright\arraybackslash}p{5.1cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Object} &
+{\sffamily\bfseries\color{conclaveblue}What it is} &
+{\sffamily\bfseries\color{conclaveblue}Lives in} \\
+\midrule
+\code{Observation}   & One reading of the world: numeric features plus optional text & \file{conclave/core/types.py} \\
+\code{FusedFeaturizer} & Turns observations into vectors under a fixed memory budget & \file{conclave/brain/featurize.py} \\
+\code{EnsembleBrain} & The committee. Replaces the LLM & \file{conclave/brain/ensemble.py} \\
+\code{UncertaintyGate} & Converts disagreement into act / gather / abstain / escalate & \file{conclave/brain/uncertainty.py} \\
+\code{ToolRegistry}  & Your capabilities, with typed schemas & \file{conclave/core/registry.py} \\
+\code{Agent}         & The loop that ties it together & \file{conclave/core/agent.py} \\
+\code{ToolRouter}    & Picks a tool by ranking, not classifying & \file{conclave/brain/router.py} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keybox}[The one idea worth carrying through this document]
+A single model gives you a prediction and a confidence number. A \emph{committee}
+gives you something a single model cannot: the \textbf{spread of opinion}
+between members. CONCLAVE treats that spread as a first-class control signal ---
+it is the difference between ``this is a hard call'' and ``I have no idea'',
+and those two situations warrant different behaviour. Section~\ref{sec:math}
+derives it properly.
+\end{keybox}
+
+\subsection{If you have twenty minutes}
+
+\begin{enumerate}[leftmargin=*,itemsep=3pt]
+  \item \S\ref{sec:windows} --- set up the virtual environment, run \code{pytest}.
+        Expect \textbf{14 passed}.
+  \item Run \code{python demo.py episode} and watch the \code{net} column.
+        Long stretches say \code{DOWN} and the agent keeps working. That is the
+        entire thesis of the project, visible in one column.
+  \item Run \code{python demo.py uncertainty} to see the committee split apart
+        as you break its sensors.
+\end{enumerate}
+
+Everything else in this guide is depth on those three things.

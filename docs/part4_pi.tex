@@ -1,0 +1,315 @@
+% ======================================================================
+\section{Deploying and testing for a Raspberry Pi 4}\label{sec:pi}
+% ======================================================================
+
+You do not own a Raspberry Pi. That is a normal situation and it does not stop
+you from doing most of this properly --- provided you are precise about which
+claims survive emulation and which do not. Conflating those two is how resource
+claims get rejected in review.
+
+\subsection{Three levels of fidelity}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.32}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.3cm}
+                 >{\raggedright\arraybackslash}p{5.4cm}
+                 >{\raggedright\arraybackslash}p{6.5cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Level} &
+{\sffamily\bfseries\color{conclaveblue}What it is} &
+{\sffamily\bfseries\color{conclaveblue}What it can prove} \\
+\midrule
+\textbf{1. Constrained x86} \newline {\scriptsize what \file{exp4\_edge.py} does} &
+Thread caps and a RAM ceiling on your own machine &
+Memory footprint, algorithmic behaviour. Latency only as an \emph{x86} number. \\
+\midrule
+\rowcolor{conclaveteal!7}
+\textbf{2. Emulated ARM64} \newline {\scriptsize Docker + QEMU} &
+A genuine \code{aarch64} userland: ARM wheels, ARM BLAS, ARM NumPy paths &
+That it \emph{installs}, \emph{runs} and \emph{fits} on ARM. Correctness.
+\textbf{Not} latency. \\
+\midrule
+\textbf{3. Real hardware} &
+An actual Pi 4, about \$50 &
+Everything, including latency and energy \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keybox}[What emulation is genuinely for]
+Level 2 answers the question that actually blocks a deployment: \emph{does the
+software stack exist for this architecture at all?} Whether \code{scipy} has an
+ARM wheel is a hard yes/no that emulation answers definitively, and it is a far
+more common cause of failed edge deployments than being 3\,ms too slow.
+\end{keybox}
+
+\subsection{The finding that will save you a weekend}
+
+Raspberry Pi OS ships in 32-bit (\code{armv7l}) and 64-bit (\code{aarch64})
+flavours. For this dependency stack they are not equivalent:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.24}
+\begin{tabular}{@{}l c c@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Package} &
+{\sffamily\bfseries\color{conclaveblue}PyPI \code{aarch64} (64-bit)} &
+{\sffamily\bfseries\color{conclaveblue}PyPI \code{armv7l} (32-bit)} \\
+\midrule
+numpy        & \textcolor{conclaveteal}{\textbf{wheel}} & \textcolor{conclavered}{\textbf{none}} \\
+scipy        & \textcolor{conclaveteal}{\textbf{wheel}} & \textcolor{conclavered}{\textbf{none}} \\
+scikit-learn & \textcolor{conclaveteal}{\textbf{wheel}} & \textcolor{conclavered}{\textbf{none}} \\
+lightgbm     & \textcolor{conclaveteal}{\textbf{wheel}} & \textcolor{conclavered}{\textbf{none}} \\
+psutil       & \textcolor{conclaveteal}{\textbf{wheel}} & \textcolor{conclavered}{\textbf{none}} \\
+joblib       & \multicolumn{2}{c}{\textcolor{conclaveteal}{\textbf{pure Python --- fine either way}}} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{dangerbox}[Use the 64-bit OS]
+On 32-bit Raspberry Pi OS, \code{pip install scipy} means \emph{compiling scipy
+on the Pi}. That is hours of build time and it frequently dies of memory
+exhaustion on a 1\,GB board.
+
+Two ways out, in order of preference:
+\begin{enumerate}[leftmargin=*,itemsep=2pt,topsep=3pt]
+  \item \textbf{Install 64-bit Raspberry Pi OS} and use ordinary PyPI wheels.
+        The Pi 4 and Pi Zero 2 W are both 64-bit capable. This is the right
+        answer.
+  \item If you are stuck on 32-bit, use \textbf{piwheels}
+        (\code{piwheels.org}), which publishes pre-built \code{armv7l} wheels
+        and is already configured as an index on Raspberry Pi OS. It carries
+        builds for all four packages above.
+\end{enumerate}
+\end{dangerbox}
+
+\subsection{Setting up emulated ARM64 on Windows}
+
+\begin{codebox}[PowerShell --- one time]
+\begin{lstlisting}[style=shell]
+# 1. Docker Desktop with the WSL2 backend must be running.
+docker version
+
+# 2. Register the QEMU binfmt handlers so the kernel can execute ARM binaries.
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+
+# 3. Confirm arm64 is now a build target.
+docker buildx ls
+\end{lstlisting}
+\end{codebox}
+
+\noindent You should see \code{linux/arm64} listed among the supported
+platforms. That single \code{binfmt} step is what makes everything else work:
+it teaches the Linux kernel to hand \code{aarch64} executables to QEMU
+transparently.
+
+\subsection{Build and run the Pi target}
+
+The repository ships \file{deploy/Dockerfile.pi4} and
+\file{deploy/docker-compose.pi4.yml}.
+
+\begin{codebox}[PowerShell --- from the repo root]
+\begin{lstlisting}[style=shell]
+docker buildx build --platform linux/arm64 `
+  -f deploy/Dockerfile.pi4 -t conclave:pi4 --load .
+
+# sanity check: what architecture are we actually on?
+docker run --rm --platform linux/arm64 conclave:pi4
+
+# the real check, with a Pi 4's memory ceiling enforced
+docker compose -f deploy/docker-compose.pi4.yml run --rm pi4 `
+  python deploy/pi_check.py
+\end{lstlisting}
+\end{codebox}
+
+\noindent Three details in that Dockerfile are deliberate and worth copying if
+you write your own:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.28}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.4cm}
+                 >{\raggedright\arraybackslash}p{9.8cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Line} &
+{\sffamily\bfseries\color{conclaveblue}Why} \\
+\midrule
+\code{--only-binary=:all:} & Makes a missing ARM wheel fail \emph{loudly} in
+seconds instead of silently starting an hour-long source build. This is the
+single most useful flag in the file. \\
+\code{apt-get install libgomp1} & LightGBM's OpenMP runtime. The
+\code{python:slim} images do not ship it, and the resulting \code{ImportError}
+is cryptic. \\
+\code{OMP\_NUM\_THREADS=1} & Matches the single-decision workload, for the
+reason in \S\ref{sec:models}. The compose file raises it to 4 for the Pi 4
+profile. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{The compose profiles}
+
+Three boards, with \textbf{real} cgroup limits --- unlike the \code{RLIMIT\_AS}
+path in \file{exp4\_edge.py}, which silently does nothing on Windows:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.24}
+\begin{tabular}{@{}llrrl@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Service} &
+{\sffamily\bfseries\color{conclaveblue}Board} &
+{\sffamily\bfseries\color{conclaveblue}RAM} &
+{\sffamily\bfseries\color{conclaveblue}CPUs} &
+{\sffamily\bfseries\color{conclaveblue}Notes} \\
+\midrule
+\code{pi4}    & Pi 4 Model B      & 4\,GB   & 4 & the usual target \\
+\code{pi3}    & Pi 3B+            & 1\,GB   & 4 & tight but workable \\
+\code{zero2w} & Pi Zero 2 W       & 512\,MB & 1 & the hard case \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keybox}[\code{memswap\_limit} equal to \code{mem\_limit} disables swap]
+Without that, Docker lets the container swap and your ``512\,MB'' test quietly
+becomes a 1\,GB test. Setting them equal is what makes the ceiling real. This is
+the most commonly botched part of container-based memory testing.
+\end{keybox}
+
+\subsection{What \code{pi\_check.py} reports, and why it is split}
+
+\file{deploy/pi\_check.py} trains a small agent, exercises it, and labels every
+line \code{[valid]} or invalid, detecting emulation by looking for a real Pi
+signature in \file{/proc/cpuinfo} and \file{/proc/device-tree/model}:
+
+\begin{codebox}[One captured run on native 2-core x86 --- your numbers will differ]
+\begin{lstlisting}[style=out]
+  architecture   : x86_64
+  visible cores  : 2
+  RAM ceiling    : 3915 MB
+  emulated       : no
+====================================================================
+  [valid]  agent artefact      :    186.2 KB
+  [valid]  training accuracy   :     98.19 %
+  [valid]  peak RSS            :    194.9 MB
+  [valid]  fits RAM ceiling    : YES
+  [valid]  training time       :       2.0 s
+
+  [valid (native)]
+           median decision     :      2.41 ms
+           p99 decision        :      2.92 ms
+\end{lstlisting}
+\end{codebox}
+
+\noindent Run the same script under the \code{arm64} container and the header
+flips to \code{emulated: YES}, the timing block is marked invalid, and the
+script tells you so in plain language.
+
+\begin{warnbox}[Latency is noisy; do not quote a single run]
+Repeated runs of the same benchmark on the same machine vary by tens of
+percent, depending on thermal state and what else is running. Across three runs
+of \file{exp4\_edge.py} on the same container the host median moved between
+2.4 and 2.8\,ms. If a latency number is going into a paper, report the median
+of several independent runs and say how many --- and re-run every experiment
+that feeds a table before you submit, because a stale table is the easiest
+mistake to make and the hardest to spot.
+\end{warnbox}
+
+\subsection{What you may and may not claim}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.0cm}
+                 >{\raggedright\arraybackslash}p{10.2cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Measurement} &
+{\sffamily\bfseries\color{conclaveblue}Status under emulation} \\
+\midrule
+Model / artefact size & \textcolor{conclaveteal}{\textbf{Valid.}} Architecture-independent bytes. \\
+Peak RSS & \textcolor{conclaveteal}{\textbf{Valid.}} The cgroup limit is real, and pointer width is genuinely 64-bit ARM. \\
+Fits in RAM (yes/no) & \textcolor{conclaveteal}{\textbf{Valid}}, and this is the claim that most often decides a deployment. \\
+Correctness / accuracy & \textcolor{conclaveteal}{\textbf{Valid.}} Same wheels, same code paths. \\
+Wheel availability & \textcolor{conclaveteal}{\textbf{Valid}}, and only obtainable this way. \\
+\midrule
+Decision latency & \textcolor{conclavered}{\textbf{Invalid.}} QEMU is typically 5--20$\times$ slower and not uniformly so. \\
+Energy per decision & \textcolor{conclavered}{\textbf{Invalid.}} Derived from latency. \\
+Throughput & \textcolor{conclavered}{\textbf{Invalid.}} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{warnbox}[How to phrase this in the paper]
+The paper currently reports estimated on-device latency scaled by a relative
+single-core throughput ratio, and labels it an estimate. That is defensible.
+What is \emph{not} defensible is presenting a QEMU number as a Pi measurement.
+If a reviewer asks for hardware numbers, the honest answer is: ``memory and
+correctness were verified on an emulated \code{aarch64} target with enforced
+cgroup limits; latency is a stated scaling model, and we have not measured on
+silicon.'' Buying a Pi 4 is the cheapest way to close that gap.
+\end{warnbox}
+
+\subsection{When you do get real hardware}
+
+\begin{codebox}[On the Pi, over SSH --- 64-bit Raspberry Pi OS]
+\begin{lstlisting}[style=shell]
+uname -m                       # want: aarch64
+sudo apt update && sudo apt install -y python3-venv python3-dev libgomp1
+
+python3 -m venv ~/conclave-env
+source ~/conclave-env/bin/activate
+
+git clone https://github.com/<user>/conclave && cd conclave
+pip install --only-binary=:all: -e ".[boost]"
+
+python deploy/pi_check.py      # now every line is valid
+pytest -q                      # 9 smoke tests; paper-claim tests need results/
+\end{lstlisting}
+\end{codebox}
+
+\noindent Two practical notes for real hardware:
+
+\begin{itemize}[leftmargin=*,itemsep=3pt]
+  \item \textbf{Thermal throttling is real.} A Pi 4 under sustained load drops
+        clock speed. Run \code{vcgencmd measure\_temp} alongside your benchmark
+        and discard runs above about 80\,\textdegree C, or report that you used
+        a heatsink.
+  \item \textbf{Pin the governor} before timing anything:
+        \code{sudo cpufreq-set -g performance}. Otherwise the first few
+        decisions are measured at idle clock and your p99 is meaningless.
+\end{itemize}
+
+\subsection{Deploying a trained agent, not the training code}
+
+For a field device you ship the artefact, not the pipeline:
+
+\begin{codebox}[On your laptop]
+\begin{lstlisting}[style=py]
+import joblib
+joblib.dump({"fz": fz, "brain": brain, "gate": brain.gate},
+            "agent.joblib", compress=3)     # ~200 KB
+\end{lstlisting}
+\end{codebox}
+
+\begin{codebox}[On the Pi --- no pandas, no matplotlib, no training data]
+\begin{lstlisting}[style=py]
+import joblib
+from conclave import Agent
+from conclave.core.types import Observation
+
+b = joblib.load("agent.joblib")
+agent = Agent(brain=b["brain"], featurizer=b["fz"],
+              registry=registry, gate=b["gate"])
+
+while True:
+    obs = Observation(features=read_sensors(), text=read_radio())
+    d = agent.decide(obs)
+    log(d.action, d.confidence, d.disagreement, d.gate)
+\end{lstlisting}
+\end{codebox}
+
+\noindent The runtime dependency set collapses to \code{numpy}, \code{scipy},
+\code{scikit-learn}, \code{joblib} --- and \code{lightgbm} only if you use
+\code{ToolRouter}. That is roughly 60\,MB of wheels and a 200\,KB agent.

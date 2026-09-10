@@ -1,0 +1,280 @@
+{
+  "selective_prediction": [
+    {
+      "coverage": 1.0,
+      "random": 0.9629166666666666,
+      "confidence": 0.9629166666666666,
+      "gate": 0.9629166666666666
+    },
+    {
+      "coverage": 0.9,
+      "random": 0.9629629629629629,
+      "confidence": 0.9898148148148148,
+      "gate": 0.9828703703703704
+    },
+    {
+      "coverage": 0.8,
+      "random": 0.9630208333333333,
+      "confidence": 0.9885416666666667,
+      "gate": 0.9822916666666667
+    },
+    {
+      "coverage": 0.7,
+      "random": 0.9583333333333334,
+      "confidence": 0.9994047619047619,
+      "gate": 0.9994047619047619
+    },
+    {
+      "coverage": 0.6,
+      "random": 0.9618055555555556,
+      "confidence": 1.0,
+      "gate": 1.0
+    },
+    {
+      "coverage": 0.5,
+      "random": 0.9608333333333333,
+      "confidence": 1.0,
+      "gate": 1.0
+    }
+  ],
+  "risk_coverage": {
+    "coverage": [
+      0.05,
+      0.08958333333333333,
+      0.12875,
+      0.16875,
+      0.20791666666666667,
+      0.24791666666666667,
+      0.2875,
+      0.32708333333333334,
+      0.36625,
+      0.4058333333333333,
+      0.44583333333333336,
+      0.48541666666666666,
+      0.525,
+      0.5645833333333333,
+      0.6041666666666666,
+      0.64375,
+      0.6833333333333333,
+      0.7229166666666667,
+      0.7625,
+      0.8020833333333334,
+      0.8416666666666667,
+      0.88125,
+      0.9208333333333333,
+      0.9604166666666667,
+      1.0
+    ],
+    "accuracy": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.9953890489913545,
+      0.9879781420765027,
+      0.9885714285714285,
+      0.9891089108910891,
+      0.9895981087470449,
+      0.9895927601809955,
+      0.9874186550976138,
+      0.9629166666666666
+    ],
+    "aurc": 0.946402484103954
+  },
+  "ood_detection": [
+    {
+      "shift": "sensor_noise",
+      "magnitude": 0.2,
+      "accuracy_under_shift": 0.9066666666666666,
+      "clean_accuracy": 0.9629166666666666,
+      "mean_epistemic": 0.1141705518569924,
+      "mean_aleatoric": 0.07369912628965145,
+      "auroc_epistemic": 0.5368807291666666,
+      "auroc_aleatoric": 0.5551876736111111,
+      "auroc_confidence": 0.5470973958333333
+    },
+    {
+      "shift": "sensor_noise",
+      "magnitude": 0.6,
+      "accuracy_under_shift": 0.7533333333333333,
+      "clean_accuracy": 0.9629166666666666,
+      "mean_epistemic": 0.19084418976067527,
+      "mean_aleatoric": 0.12728146625850564,
+      "auroc_epistemic": 0.6764253472222221,
+      "auroc_aleatoric": 0.7058869791666667,
+      "auroc_confidence": 0.6936371527777778
+    },
+    {
+      "shift": "sensor_noise",
+      "magnitude": 1.2,
+      "accuracy_under_shift": 0.6025,
+      "clean_accuracy": 0.9629166666666666,
+      "mean_epistemic": 0.24656791828244753,
+      "mean_aleatoric": 0.14850392273541294,
+      "auroc_epistemic": 0.7687723958333332,
+      "auroc_aleatoric": 0.7951899305555555,
+      "auroc_confidence": 0.7864543402777777
+    },
+    {
+      "shift": "sensor_dropout",
+      "magnitude": 0.2,
+      "accuracy_under_shift": 0.72875,
+      "clean_accuracy": 0.9629166666666666,
+      "mean_epistemic": 0.15637858728411777,
+      "mean_aleatoric": 0.08412115735688395,
+      "auroc_epistemic": 0.5958260416666666,
+      "auroc_aleatoric": 0.5912621527777777,
+      "auroc_confidence": 0.6074515625
+    },
+    {
+      "shift": "sensor_dropout",
+      "magnitude": 0.5,
+      "accuracy_under_shift": 0.47041666666666665,
+      "clean_accuracy": 0.9629166666666666,
+      "mean_epistemic": 0.22991424840863242,
+      "mean_aleatoric": 0.13841847507619442,
+      "auroc_epistemic": 0.7140901909722223,
+      "auroc_aleatoric": 0.7229726562500001,
+      "auroc_confidence": 0.7430598090277777
+    },
+    {
+      "shift": "sensor_dropout",
+      "magnitude": 0.8,
+      "accuracy_under_shift": 0.26625,
+      "clean_accuracy": 0.9629166666666666,
+      "mean_epistemic": 0.28077758635151867,
+      "mean_aleatoric": 0.18623818384045576,
+      "auroc_epistemic": 0.8204459201388888,
+      "auroc_aleatoric": 0.8518782118055556,
+      "auroc_confidence": 0.8578441840277777
+    },
+    {
+      "shift": "sensor_bias",
+      "magnitude": 0.5,
+      "accuracy_under_shift": 0.9545833333333333,
+      "clean_accuracy": 0.9629166666666666,
+      "mean_epistemic": 0.16567297559073996,
+      "mean_aleatoric": 0.10318921691857345,
+      "auroc_epistemic": 0.7048126736111111,
+      "auroc_aleatoric": 0.7491645833333334,
+      "auroc_confidence": 0.6974986111111111
+    },
+    {
+      "shift": "sensor_bias",
+      "magnitude": 2.0,
+      "accuracy_under_shift": 0.9479166666666666,
+      "clean_accuracy": 0.9629166666666666,
+      "mean_epistemic": 0.20619782961402008,
+      "mean_aleatoric": 0.15220054723850002,
+      "auroc_epistemic": 0.7666939236111112,
+      "auroc_aleatoric": 0.8765402777777778,
+      "auroc_confidence": 0.7699430555555555
+    },
+    {
+      "shift": "novel_text",
+      "magnitude": 1.0,
+      "accuracy_under_shift": 0.6720833333333334,
+      "clean_accuracy": 0.9629166666666666,
+      "mean_epistemic": 0.3969146296486713,
+      "mean_aleatoric": 0.20209435660304875,
+      "auroc_epistemic": 0.9550043402777777,
+      "auroc_aleatoric": 0.9303803819444445,
+      "auroc_confidence": 0.9603543402777777
+    }
+  ],
+  "ood_note": "Severity shift alone produced AUROC ~0.50 because the controller keeps observations in-distribution; reported shifts move the covariates and accuracy measurably.",
+  "human_attention_budget": [
+    {
+      "sensor_dropout": 0.0,
+      "budget": 4,
+      "none": 36.95065449056924,
+      "none_sem": 2.3399311217786907,
+      "random": 36.88793010065639,
+      "random_sem": 2.330874693019979,
+      "confidence": 35.83967880304469,
+      "confidence_sem": 1.9606052325432886,
+      "epistemic": 36.3752187759462,
+      "epistemic_sem": 2.673522923581235,
+      "used_random": 3.475,
+      "used_conf": 2.975,
+      "used_epistemic": 3.325,
+      "casualties_none": 46.99744421553855,
+      "casualties_epistemic": 52.48019646617056
+    },
+    {
+      "sensor_dropout": 0.0,
+      "budget": 10,
+      "none": 36.95065449056924,
+      "none_sem": 2.3399311217786907,
+      "random": 36.2841279766795,
+      "random_sem": 2.21219614365137,
+      "confidence": 36.65772738016353,
+      "confidence_sem": 1.7624923412184865,
+      "epistemic": 35.75345407166428,
+      "epistemic_sem": 2.344618503670441,
+      "used_random": 9.075,
+      "used_conf": 8.325,
+      "used_epistemic": 8.475,
+      "casualties_none": 46.99744421553855,
+      "casualties_epistemic": 60.17344859195267
+    },
+    {
+      "sensor_dropout": 0.6,
+      "budget": 4,
+      "none": -14.657735181737504,
+      "none_sem": 6.467013415557099,
+      "random": -7.3109148486629945,
+      "random_sem": 5.488292062473197,
+      "confidence": -10.3936513370079,
+      "confidence_sem": 6.000458960222947,
+      "epistemic": -14.44374856501372,
+      "epistemic_sem": 6.060487713224015,
+      "used_random": 3.0,
+      "used_conf": 4.0,
+      "used_epistemic": 4.0,
+      "casualties_none": 115.95375615060274,
+      "casualties_epistemic": 115.2355361977881
+    },
+    {
+      "sensor_dropout": 0.6,
+      "budget": 10,
+      "none": -14.657735181737504,
+      "none_sem": 6.467013415557099,
+      "random": 2.879233727013658,
+      "random_sem": 5.696976296872417,
+      "confidence": -10.258973694403178,
+      "confidence_sem": 5.959377710517953,
+      "epistemic": -11.0548817623216,
+      "epistemic_sem": 5.555300762601508,
+      "used_random": 8.775,
+      "used_conf": 10.0,
+      "used_epistemic": 10.0,
+      "casualties_none": 115.95375615060274,
+      "casualties_epistemic": 112.13467380330898
+    }
+  ],
+  "design_note": "Escalation is modelled as a human taking that single decision using the expert controller, capped by a per-episode budget. Triggers are compared at matched budgets so the comparison isolates the ranking signal. Oversight is evaluated under sensor dropout, since a healthy cloned agent already matches the expert and leaves nothing for a human to add.",
+  "_meta": {
+    "timestamp": "2026-08-31T04:13:50",
+    "git": "nogit",
+    "seed": 42,
+    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "machine": "x86_64",
+    "python": "3.10.12",
+    "logical_cores": 2,
+    "ram_gb": 3.82
+  }
+}

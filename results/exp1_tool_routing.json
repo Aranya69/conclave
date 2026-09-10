@@ -1,0 +1,56 @@
+{
+  "routing": [
+    {
+      "split": "BFCL_v3_multiple",
+      "n_train": 140,
+      "n_test": 60,
+      "avg_candidates": 2.85,
+      "top1_accuracy": 0.9833333333333333,
+      "tfidf_only_baseline": 0.9,
+      "mean_latency_ms": 4.717336983291413,
+      "p99_latency_ms": 6.156338269211118,
+      "fit_seconds": 0.5800512840014562
+    },
+    {
+      "split": "BFCL_v3_live_multiple",
+      "n_train": 736,
+      "n_test": 316,
+      "avg_candidates": 3.9430379746835444,
+      "top1_accuracy": 0.9082278481012658,
+      "tfidf_only_baseline": 0.7943037974683544,
+      "mean_latency_ms": 3.9932862468613397,
+      "p99_latency_ms": 7.089301400628756,
+      "fit_seconds": 2.6375630959992122
+    },
+    {
+      "split": "BFCL_v3_live_multiple [unseen tools n=68]",
+      "n_train": 331,
+      "n_test": 346,
+      "avg_candidates": 3.861271676300578,
+      "top1_accuracy": 0.7890173410404624,
+      "tfidf_only_baseline": 0.5664739884393064,
+      "mean_latency_ms": 4.3514076675761695,
+      "p99_latency_ms": 10.245763950206326,
+      "fit_seconds": 1.198129352000251,
+      "held_out_tools": 68
+    }
+  ],
+  "abstention": {
+    "n": 2628,
+    "positive_rate": 0.4254185692541857,
+    "accuracy": 0.8428390367553865,
+    "f1": 0.8149253731343283,
+    "auc": 0.9211539472301061,
+    "mean_latency_ms": 0.11038151837786744
+  },
+  "_meta": {
+    "timestamp": "2026-08-31T03:51:51",
+    "git": "nogit",
+    "seed": 42,
+    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "machine": "x86_64",
+    "python": "3.10.12",
+    "logical_cores": 2,
+    "ram_gb": 3.82
+  }
+}

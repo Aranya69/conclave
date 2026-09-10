@@ -1,0 +1,38 @@
+# Resource-constrained CONCLAVE targets.
+#
+# The cpus/mem limits are REAL cgroup limits and are enforced, unlike the
+# RLIMIT_AS path that silently no-ops on Windows. Timing under QEMU is not
+# meaningful; memory and correctness are.
+#
+#   docker compose -f deploy/docker-compose.pi4.yml run --rm pi4
+services:
+  pi4:                        # Raspberry Pi 4 Model B, 4 GB
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.pi4
+    platform: linux/arm64
+    mem_limit: 4g
+    memswap_limit: 4g         # equal to mem_limit => swap disabled
+    cpus: 4.0
+    environment: [OMP_NUM_THREADS=4, OPENBLAS_NUM_THREADS=4]
+    volumes: ["../results:/opt/conclave/results"]
+
+  pi3:                        # Raspberry Pi 3B+, 1 GB -- the tight one
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.pi4
+    platform: linux/arm64
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: 4.0
+    environment: [OMP_NUM_THREADS=4, OPENBLAS_NUM_THREADS=4]
+
+  zero2w:                     # Pi Zero 2 W, 512 MB -- the hard case
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.pi4
+    platform: linux/arm64
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.0
+    environment: [OMP_NUM_THREADS=1, OPENBLAS_NUM_THREADS=1]

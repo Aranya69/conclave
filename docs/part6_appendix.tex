@@ -1,0 +1,140 @@
+% ======================================================================
+\section*{Appendix --- one-page reference}
+\addcontentsline{toc}{section}{Appendix --- one-page reference}
+% ======================================================================
+\markboth{Appendix}{Appendix}
+
+\subsection*{Commands}
+
+\begin{codebox}[Setup, test, explore]
+\begin{lstlisting}[style=shell]
+py -3.12 -m venv .venv                        # create
+.\.venv\Scripts\Activate.ps1                  # activate (PowerShell)
+pip install -e ".[boost,experiments,dev]"     # install
+
+pytest -q                                     # expect 14 passed
+python demo.py episode                        # watch the net column
+python demo.py uncertainty                    # break the sensors
+python examples/pump_station.py               # the worked example
+
+python scripts/run_all.py                     # reproduce the paper
+python experiments/make_figures.py            # redraw figures
+\end{lstlisting}
+\end{codebox}
+
+\begin{codebox}[Emulated Raspberry Pi]
+\begin{lstlisting}[style=shell]
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+docker buildx build --platform linux/arm64 -f deploy/Dockerfile.pi4 -t conclave:pi4 --load .
+docker compose -f deploy/docker-compose.pi4.yml run --rm pi4 python deploy/pi_check.py
+\end{lstlisting}
+\end{codebox}
+
+\subsection*{The six-step program}
+
+\begin{codebox}[Minimal complete agent]
+\begin{lstlisting}[style=py]
+from conclave import (Agent, EnsembleBrain, EpisodicMemory, Observation,
+                   ToolRegistry, UncertaintyGate)
+from conclave.brain.featurize import (BudgetedTextFeaturizer, FusedFeaturizer,
+                                   TabularFeaturizer)
+from conclave.tools.base import tool
+
+@tool(description="What a user would say they need")          # 1. tools
+def do_something(arg: int = 1) -> str: ...
+registry = ToolRegistry([do_something])
+
+observations, labels = load_my_decision_log()                 # 2. data
+
+fz = FusedFeaturizer(                                         # 3. features
+    text=BudgetedTextFeaturizer(n_word_features=2**14,
+                                n_char_features=2**14),
+    tabular=TabularFeaturizer()).fit(observations)
+
+brain = EnsembleBrain(weighting="logloss").fit(               # 4. brain
+    fz.transform(observations), labels)
+
+gate = brain.calibrate_gate(X_val, y_val, target_precision=0.90)   # 5. gate
+
+agent = Agent(brain=brain, featurizer=fz, registry=registry,  # 6. agent
+              gate=gate, memory=EpisodicMemory(capacity=2000))
+
+d = agent.decide(Observation(features={...}, text="..."))
+print(d.action, d.confidence, d.disagreement, d.gate)
+\end{lstlisting}
+\end{codebox}
+
+\subsection*{Uncertainty cheat-sheet}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm}
+                 >{\raggedright\arraybackslash}p{3.0cm}
+                 >{\raggedright\arraybackslash}p{4.0cm}
+                 >{\raggedright\arraybackslash}p{4.4cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Aleatoric} &
+{\sffamily\bfseries\color{conclaveblue}Epistemic} &
+{\sffamily\bfseries\color{conclaveblue}Meaning} &
+{\sffamily\bfseries\color{conclaveblue}Gate fires} \\
+\midrule
+low  & low  & Clear-cut & \code{ACT} \\
+high & low  & Genuinely ambiguous; more data will not help & \code{ABSTAIN} \\
+low  & high & Members disagree; out of competence & \code{GATHER} / \code{ESCALATE} \\
+high & high & Hard \emph{and} unfamiliar & \code{ESCALATE} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Numbers worth remembering}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.24}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{7.4cm}
+                 >{\raggedright\arraybackslash}p{7.6cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Quantity} &
+{\sffamily\bfseries\color{conclaveblue}Value} \\
+\midrule
+Tool routing, BFCL \code{live\_multiple}   & 90.8\% top-1, 4.0\,ms, 631\,KB \\
+Routing on tools unseen in training        & 78.9\% (lexical baseline 56.7\%) \\
+Abstention (irrelevance detection)         & 84.3\% accuracy, 0.921 AUC \\
+HumAID triage, $2^{16}$ features           & 0.743 weighted F1 vs RoBERTa 0.760 \\
+Disaster agent artefact                    & 232\,KB \\
+Decision latency (2-core x86)              & $\approx$\,2.5--2.8\,ms median \\
+Return at 73\% offline                     & CONCLAVE $+33.5$ vs cloud oracle $-127.3$ \\
+Selective prediction                       & 96.3\% at full coverage $\to$ 100\% at 50\% \\
+Shift detection, novel text                & AUROC 0.955 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Things that are true and inconvenient}
+
+\begin{enumerate}[leftmargin=*,itemsep=3pt]
+  \item Text features are lexical. Paraphrase and negation hurt more than they
+        hurt a transformer.
+  \item The aleatoric/epistemic split did not beat plain confidence on these
+        benchmarks.
+  \item Uncertainty-triggered human oversight lost to \emph{random} oversight in
+        the sequential task.
+  \item Peak RSS is $\approx$\,200\,MB, dominated by the Python runtime; the
+        agent itself is 232\,KB.
+  \item The planner heuristic is not admissible for multi-effect or
+        sub-unit-cost tools.
+  \item On-device latency is a scaling model, not a measurement. No Raspberry Pi
+        was harmed in the making of this paper --- because none was used.
+\end{enumerate}
+
+\vspace{4mm}
+\begin{center}
+\begin{tikzpicture}
+\draw[conclaverule,line width=0.8pt] (0,0) -- (\textwidth,0);
+\node[anchor=north, font=\sffamily\footnotesize\color{conclavegrey},
+      text width=\textwidth, align=center] at (0.5\textwidth,-2mm)
+     {CONCLAVE 0.1.0 \, \textbullet \, Apache-2.0 \, \textbullet \,
+      companion to \emph{Agentic AI Without a Language Model}};
+\end{tikzpicture}
+\end{center}

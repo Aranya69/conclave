@@ -1,0 +1,41 @@
+# Emulated Raspberry Pi 4 target for CONCLAVE.
+#
+# Built for linux/arm64 so the Python wheels, the BLAS build and the NumPy
+# code paths are the ones that would run on 64-bit Raspberry Pi OS. On an
+# x86 host this runs under QEMU user-mode emulation, which is faithful for
+# *correctness* and useless for *timing* -- see deploy/README.md.
+#
+#   docker buildx build --platform linux/arm64 -f deploy/Dockerfile.pi4 -t conclave:pi4 .
+FROM --platform=linux/arm64 python:3.12-slim-bookworm
+
+# libgomp is LightGBM's OpenMP runtime; the slim image does not ship it.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgomp1 procps \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/conclave
+COPY pyproject.toml README.md ./
+COPY conclave ./conclave
+
+# A Pi 4 has no business compiling scipy, so fail loudly if a wheel is missing
+# rather than silently starting an hour-long source build.
+RUN pip install --no-cache-dir --only-binary=:all: -e ".[boost]"
+
+COPY examples ./examples
+COPY tests ./tests
+COPY deploy ./deploy
+COPY demo.py ./
+
+# One thread: a Pi 4 has four slow cores, and CONCLAVE decides one observation at
+# a time, where thread-pool setup costs more than the prediction.
+ENV OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    PYTHONUNBUFFERED=1
+
+CMD ["python", "-c", "import platform, sklearn, numpy; \
+print('arch     :', platform.machine()); \
+print('python   :', platform.python_version()); \
+print('numpy    :', numpy.__version__); \
+print('sklearn  :', sklearn.__version__); \
+import conclave; print('conclave    :', conclave.__version__)"]

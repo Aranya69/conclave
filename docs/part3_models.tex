@@ -1,0 +1,290 @@
+% ======================================================================
+\section{The machine-learning models inside}\label{sec:models}
+% ======================================================================
+
+This is the part that replaces the language model, so it deserves scrutiny.
+The short version: CONCLAVE runs a small committee of \emph{deliberately different}
+scikit-learn estimators and averages their posteriors. The diversity is not
+incidental --- it is the whole mechanism.
+
+\subsection{What is actually in the committee}
+
+\code{EnsembleBrain} picks its default members based on your data. There are
+three cases, all decided automatically in \code{conclave/brain/ensemble.py}:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.28}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm}
+                 >{\raggedright\arraybackslash}p{5.0cm}
+                 >{\raggedright\arraybackslash}p{7.2cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Your data} &
+{\sffamily\bfseries\color{conclaveblue}Members} &
+{\sffamily\bfseries\color{conclaveblue}Why these} \\
+\midrule
+Sparse, non-negative \newline {\scriptsize(text only)} &
+\code{LogisticRegression}\newline \code{SGDClassifier}\newline \code{ComplementNB} &
+Discriminative linear, a differently-regularised linear, and a
+\emph{generative} model. Complement NB is the strongest naive-Bayes variant for
+imbalanced text. \\
+\midrule
+Sparse with negatives \newline {\scriptsize(text + scaled sensors)} &
+\code{LogisticRegression}\newline \code{SGDClassifier}\newline \code{BernoulliNB} &
+Complement NB rejects negative inputs, which appear the moment you standardise
+tabular features. Bernoulli NB binarises at zero and accepts either, so the
+committee keeps a generative member instead of silently degrading to two linear
+models. \\
+\midrule
+Dense \newline {\scriptsize(sensors only)} &
+\code{LogisticRegression}\newline \code{RandomForest}\newline \code{ExtraTrees} &
+Linear plus two differently-randomised tree ensembles. Trees dominate on
+low-dimensional tabular data. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keybox}[Why heterogeneous rather than one big random forest?]
+Because epistemic uncertainty is only meaningful if members can disagree for
+\emph{structural} reasons. A random forest's trees share an inductive bias, so
+off-distribution they tend to be confidently wrong \emph{together} --- their
+disagreement collapses exactly when you need the warning most. Mixing model
+families keeps the disagreement signal alive where it matters.
+\end{keybox}
+
+\subsection{Two defaults that came from measurement, not taste}
+
+\subsubsection{\code{n\_jobs=1} everywhere}
+
+This looks like a mistake and is not. An agent decides about \emph{one}
+observation at a time, over a handful of candidate actions. At that batch size,
+constructing a joblib thread pool costs far more than the prediction:
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+  width=11.6cm, height=4.1cm, xbar, xmin=0, xmax=100,
+  bar width=8pt, y=11mm,
+  symbolic y coords={n\_jobs=1, n\_jobs=-1}, ytick=data,
+  nodes near coords={\sffamily\scriptsize\pgfmathprintnumber\pgfplotspointmeta\,ms},
+  nodes near coords align=horizontal,
+  xlabel={\sffamily\scriptsize latency for one routing decision (ms)},
+  tick label style={font=\sffamily\scriptsize},
+  label style={font=\sffamily\scriptsize},
+  axis lines=left, enlarge y limits=0.45,
+  xmajorgrids, grid style={conclaverule}]
+\addplot[fill=conclavelight, draw=conclavelight] coordinates {(4.0,n\_jobs=1)};
+\addplot[fill=conclavered, draw=conclavered]     coordinates {(90.0,n\_jobs=-1)};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\noindent Parallelism is a \emph{throughput} optimisation and a \emph{latency}
+pessimisation. Edge agents want the latter. If you are ever scoring in bulk
+--- offline evaluation, say --- pass \code{n\_jobs=-1} explicitly for that call.
+
+\subsubsection{Shallow, few trees}
+
+Depth-10 forests with 60 estimators lose well under a point of accuracy against
+depth-unbounded 200-tree forests, and cut the serialised model roughly
+$9\times$. Measured on BFCL routing:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{6.4cm}rrr@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Committee} &
+{\sffamily\bfseries\color{conclaveblue}Top-1} &
+{\sffamily\bfseries\color{conclaveblue}ms/dec.} &
+{\sffamily\bfseries\color{conclaveblue}Size} \\
+\midrule
+RF200 + ET200, \code{n\_jobs=-1}       & 88.6\% & 90.0 & 5\,519\,KB \\
+RF200 + ET200, \code{n\_jobs=1}        & 88.6\% & 12.5 & 5\,519\,KB \\
+RF100 + ET100, depth 12                & 90.2\% &  7.4 & 1\,332\,KB \\
+RF60 + ET60, depth 10                  & 89.2\% &  5.2 &   635\,KB \\
+LGBM150 + LogReg                       & 90.2\% &  2.2 &   222\,KB \\
+\rowcolor{conclaveteal!10}
+\textbf{LGBM200 + RF60d10 + LogReg} \emph{(default)} & \textbf{90.8\%} & \textbf{4.0} & \textbf{631\,KB} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Swapping the models}
+
+Any scikit-learn-compatible classifier works, provided it exposes
+\code{predict\_proba} or \code{decision\_function} (the latter gets softmaxed
+automatically). Pass a dict:
+
+\begin{codebox}[A custom committee]
+\begin{lstlisting}[style=py]
+from sklearn.linear_model import LogisticRegression, RidgeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from conclave import EnsembleBrain
+
+brain = EnsembleBrain(
+    members={
+        "logreg": LogisticRegression(C=2.0, max_iter=500, n_jobs=1),
+        "forest": RandomForestClassifier(n_estimators=80, max_depth=10, n_jobs=1),
+        "knn":    KNeighborsClassifier(n_neighbors=7),        # instance-based
+        "ridge":  RidgeClassifier(alpha=1.0),                 # no predict_proba
+    },
+    weighting="logloss",     # "uniform" | "accuracy" | "logloss"
+    cv=3,
+).fit(X, y)
+
+print(brain.weights_.round(3))
+print(brain.fit_seconds_)
+\end{lstlisting}
+\end{codebox}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.6cm}
+                 >{\raggedright\arraybackslash}p{12.6cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}\code{weighting}} &
+{\sffamily\bfseries\color{conclaveblue}Behaviour} \\
+\midrule
+\code{"uniform"} & Plain average. The most robust default, and what the paper
+uses. Hard to beat when members are comparable. \\
+\code{"accuracy"} & Weight by out-of-fold accuracy. Helps when one member is
+clearly weaker. \\
+\code{"logloss"} & Weight by inverse out-of-fold log loss. Rewards
+\emph{calibration}, not just correctness --- usually the better choice when the
+posterior itself is being consumed downstream, as it is here by the gate. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{warnbox}[Adding members has a cost you can measure]
+Every extra member adds its full inference time to \emph{every} decision, and
+its serialised bytes to the deployment. Before adding one, check it earns its
+place:
+\begin{lstlisting}[style=py]
+print(brain.footprint_bytes())   # per-member size, and the total
+print(brain.fit_seconds_)        # per-member training time
+\end{lstlisting}
+Three to four members is the sweet spot in every configuration we measured.
+\end{warnbox}
+
+\subsection{Choosing a feature budget}
+
+The budget is the single most consequential deployment decision, because the
+hashing trick makes model size a constant you choose rather than a function of
+your corpus. Measured on HumAID:
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+  width=11.8cm, height=5.4cm,
+  xlabel={\sffamily\scriptsize serialised model size (MB, log scale)},
+  ylabel={\sffamily\scriptsize weighted F1 (\%)},
+  xmode=log, xmin=1.6, xmax=700, ymin=69.5, ymax=77.5,
+  tick label style={font=\sffamily\scriptsize},
+  label style={font=\sffamily\scriptsize},
+  legend style={font=\sffamily\scriptsize, draw=none, at={(0.98,0.06)},
+                anchor=south east, fill=none},
+  axis lines=left, xmajorgrids, ymajorgrids, grid style={conclaverule}]
+\addplot[color=conclavelight, mark=*, thick, mark size=2pt]
+  coordinates {(2.58,71.32) (10.05,72.56) (36.41,74.25)};
+\addlegendentry{CONCLAVE}
+\addplot[color=conclavered, dashed, thick, forget plot]
+  coordinates {(1.6,76.0) (700,76.0)};
+\addplot[color=conclavegrey, dotted, thick, forget plot]
+  coordinates {(1.6,74.4) (700,74.4)};
+\node[font=\sffamily\scriptsize, color=conclavered, anchor=west] at (axis cs:3,76.5) {RoBERTa 76.0 ($\approx$500 MB)};
+\node[font=\sffamily\scriptsize, color=conclavegrey, anchor=west] at (axis cs:3,73.9) {FastText 74.4};
+\node[font=\sffamily\scriptsize, color=conclavelight, anchor=north] at (axis cs:2.58,71.0) {$2^{12}$};
+\node[font=\sffamily\scriptsize, color=conclavelight, anchor=north] at (axis cs:10.05,72.2) {$2^{14}$};
+\node[font=\sffamily\scriptsize, color=conclavelight, anchor=north] at (axis cs:36.41,73.9) {$2^{16}$};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\noindent A practical rule for picking one:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.6cm}
+                 >{\raggedright\arraybackslash}p{3.2cm}
+                 >{\raggedright\arraybackslash}p{9.4cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Budget} &
+{\sffamily\bfseries\color{conclaveblue}Artefact} &
+{\sffamily\bfseries\color{conclaveblue}Use when} \\
+\midrule
+$2^{12}$ & 2.6\,MB & Microcontroller-class hardware, or text is a minor signal \\
+$2^{14}$ & 10\,MB  & Pi Zero / Pi 3 with other things running \\
+$2^{16}$ & 36\,MB  & Pi 4 or better; the accuracy plateau starts around here \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Training on your own data}
+
+\begin{codebox}[The whole training path]
+\begin{lstlisting}[style=py]
+import joblib
+from conclave import EnsembleBrain
+from conclave.brain.featurize import (BudgetedTextFeaturizer, FusedFeaturizer,
+                                   TabularFeaturizer)
+
+fz = FusedFeaturizer(
+    text=BudgetedTextFeaturizer(n_word_features=2**14, n_char_features=2**14),
+    tabular=TabularFeaturizer(),
+).fit(train_obs)
+
+brain = EnsembleBrain(weighting="logloss").fit(fz.transform(train_obs), train_y)
+brain.calibrate_gate(fz.transform(val_obs), val_y, target_precision=0.90)
+
+joblib.dump({"fz": fz, "brain": brain, "gate": brain.gate},
+            "agent.joblib", compress=3)
+\end{lstlisting}
+\end{codebox}
+
+\begin{codebox}[Loading on the target device]
+\begin{lstlisting}[style=py]
+import joblib
+from conclave import Agent
+
+bundle = joblib.load("agent.joblib")
+agent = Agent(brain=bundle["brain"], featurizer=bundle["fz"],
+              registry=registry, gate=bundle["gate"])
+\end{lstlisting}
+\end{codebox}
+
+\begin{dangerbox}[joblib files are executable code]
+\code{joblib.load} unpickles, and unpickling an untrusted file runs arbitrary
+code. Only load artefacts you produced yourself or received over a channel you
+trust. This is a property of pickle, not of CONCLAVE, but it is your problem the
+moment you ship models to field devices.
+\end{dangerbox}
+
+\subsection{Where classical models genuinely lose}
+
+Being straight about this is more useful than a sales pitch:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.6cm}
+                 >{\raggedright\arraybackslash}p{10.6cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Weakness} &
+{\sffamily\bfseries\color{conclaveblue}What to do about it} \\
+\midrule
+No compositional semantics & Paraphrase and negation break lexical features.
+Widen training vocabulary, or weight numeric features more heavily. \\
+Fixed action set (\code{EnsembleBrain}) & Use \code{ToolRouter} when tools change
+at runtime --- it ranks pairs, so unseen tools still score. \\
+No argument extraction & CONCLAVE selects a tool; it does not fill typed arguments
+from free text. Use \code{arg\_builder} on \code{Agent} for rule-based slots. \\
+Needs labelled decisions & There is no zero-shot mode. You need examples of the
+decision being made, from logs or from an expert controller. \\
+\bottomrule
+\end{tabular}
+\end{center}

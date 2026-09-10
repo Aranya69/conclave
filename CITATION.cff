@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software and the paper."
+title: "CONCLAVE: agentic AI with an ensemble cognitive core"
+abstract: >-
+  An agentic AI framework whose cognitive core is a heterogeneous machine-learning
+  ensemble rather than a language model, for autonomous systems in
+  connectivity-denied and power-constrained environments.
+authors:
+  - family-names: Mahmud
+    given-names: Aranya
+    affiliation: Daffodil International University
+version: 0.1.0
+license: Apache-2.0
+repository-code: "https://github.com/Aranya69/conclave"
+keywords:
+  - agentic-ai
+  - ensemble-learning
+  - edge-ai
+  - offline-first
+  - disaster-response
+  - uncertainty-quantification
+preferred-citation:
+  type: article
+  title: >-
+    CONCLAVE: Agentic AI Without a Language Model - Ensemble Machine Learning as
+    the Cognitive Core for Connectivity-Denied Autonomous Systems
+  authors:
+    - family-names: Mahmud
+      given-names: Aranya
+  year: 2026

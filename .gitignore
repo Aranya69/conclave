@@ -1,0 +1,56 @@
+# ---- python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# ---- datasets: not ours to redistribute; use scripts/fetch_data.py
+data/
+
+# ---- trained artefacts
+*.joblib
+
+# ---- LaTeX build artefacts (paper)
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.synctex.gz
+paper/*.toc
+
+# ---- LaTeX build artefacts (guide). The built PDF IS committed - it is a
+# deliverable - but its intermediates are not.
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.toc
+docs/*.synctex.gz
+
+# ---- conversion scratch
+paper/docx/_pandoc_input.tex
+paper/docx/*.pdf
+paper/docx/*.tmp
+paper/docx/.~lock*
+*.jpg
+
+# ---- editor / OS
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- swept-up leftovers from the ARBOR -> CONCLAVE rename; safe to delete
+_trash_delete_me/
+
+# personal one-off helper, not part of the project
+push_to_github.ps1

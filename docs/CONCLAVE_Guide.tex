@@ -1,0 +1,104 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.2cm,top=2.6cm,bottom=2.2cm]{geometry}
+\input{preamble}
+
+\hypersetup{pdftitle={CONCLAVE - A Practical Guide},
+            pdfauthor={Aranya Mahmud},
+            pdfsubject={Running, using, deploying and understanding the CONCLAVE framework}}
+
+\begin{document}
+
+% ============================== TITLE PAGE ==============================
+\begin{titlepage}
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture,overlay]
+  \fill[conclaveblue] (current page.north west) rectangle
+       ([yshift=-7.2cm]current page.north east);
+  \fill[conclavelight] ([yshift=-7.2cm]current page.north west) rectangle
+       ([yshift=-7.6cm]current page.north east);
+  % A conclave: members seated in a ring, deliberating. Two dissent --
+  % the spread of the vote is the whole point of the framework.
+  \begin{scope}[shift={([xshift=15.4cm,yshift=-3.6cm]current page.north west)}]
+    \foreach \i in {0,...,8} {
+      \pgfmathsetmacro{\ang}{\i*40}
+      \coordinate (m\i) at ({1.55*cos(\ang)},{1.55*sin(\ang)});
+    }
+    \foreach \a/\b in {0/1,0/2,0/3,0/4,0/5,0/6,0/7,0/8,1/2,1/3,1/4,1/5,1/6,1/7,1/8,2/3,2/4,2/5,2/6,2/7,2/8,3/4,3/5,3/6,3/7,3/8,4/5,4/6,4/7,4/8,5/6,5/7,5/8,6/7,6/8,7/8}
+      \draw[conclavesky, opacity=0.15, line width=0.35pt] (m\a)--(m\b);
+    \draw[conclavesky, opacity=0.30, line width=0.7pt] (0,0) circle (1.55);
+    \foreach \i in {0,1,2,4,5,7,8}
+      \fill[conclavesky, opacity=0.85] (m\i) circle (4.6pt);
+    \foreach \i in {3,6}
+      \draw[conclavesky, opacity=0.95, line width=1.1pt] (m\i) circle (4.6pt);
+  \end{scope}
+  \node[anchor=north west, text width=10cm, align=left]
+       at ([xshift=2.2cm,yshift=-1.7cm]current page.north west)
+       {\sffamily\bfseries\fontsize{34}{38}\selectfont\color{white}CONCLAVE\\[2.5mm]
+        \sffamily\fontsize{15.5}{19}\selectfont\color{conclavesky}A Practical Guide};
+  \node[anchor=north west, text width=17cm, align=left]
+       at ([xshift=2.2cm,yshift=-5.6cm]current page.north west)
+       {\sffamily\fontsize{10}{14}\selectfont\color{white}
+        Windows \& VS Code \ \textbullet\ \ Using the framework \ \textbullet\ \
+        The models \ \textbullet\ \ Raspberry Pi \ \textbullet\ \ The mathematics};
+\end{tikzpicture}
+
+\vspace*{8.6cm}
+\noindent{\sffamily\large\color{conclaveblue}\textbf{What this document answers}}
+
+\vspace{2.5mm}
+\noindent\begin{minipage}{\textwidth}
+\begin{enumerate}[leftmargin=*,itemsep=5pt,label=\textbf{\color{conclavelight}\arabic*.}]
+  \item How do I get this running on Windows in VS Code?
+  \item How do I actually use the framework in my own code?
+  \item Which machine-learning models are inside, and how do I change them?
+  \item How do I deploy and test it for a Raspberry Pi 4 without owning one?
+  \item Where does every equation in the paper come from, and what does it mean?
+\end{enumerate}
+\end{minipage}
+
+\vspace{8mm}
+\noindent\begin{tcolorbox}[enhanced, colback=conclavebg, colframe=conclavesky,
+  boxrule=0pt, leftrule=3pt, arc=1pt, left=10pt, right=10pt, top=8pt, bottom=8pt]
+{\sffamily\small\color{conclavegrey}
+CONCLAVE is an agentic-AI framework whose cognitive core is a heterogeneous
+machine-learning ensemble rather than a language model. It runs offline, needs
+no GPU and no API key, and the disaster agent serialises to 232\,KB.}
+
+\vspace{4mm}
+\hspace*{0pt}\bignum{90.8\%}{tool routing}\hfill
+\bignum{4.0\,ms}{per decision}\hfill
+\bignum{232\,KB}{whole agent}\hfill
+\bignum{0}{network calls}\hspace*{0pt}
+\end{tcolorbox}
+
+\vfill
+\noindent\begin{tikzpicture}
+\draw[conclaverule,line width=0.8pt] (0,0) -- (\textwidth,0);
+\end{tikzpicture}
+
+\vspace{3mm}
+\noindent{\sffamily\small\color{conclaveblue}\textbf{Aranya Mahmud}}\\[1mm]
+{\sffamily\footnotesize\color{conclavegrey}
+Department of Computer Science and Engineering\\
+Daffodil International University, Dhaka, Bangladesh\\[2mm]
+Companion to \emph{CONCLAVE: Agentic AI Without a Language Model}\\
+Framework version 0.1.0 \, \textbullet \, Apache-2.0}
+\end{titlepage}
+
+% ============================== CONTENTS ==============================
+\newpage
+{\color{conclaveblue}\sffamily\LARGE\bfseries Contents}
+\vspace{-4mm}
+\renewcommand{\contentsname}{}
+\tableofcontents
+\newpage
+
+\input{part0_orientation}
+\input{part1_windows}
+\input{part2_framework}
+\input{part3_models}
+\input{part4_pi}
+\input{part5_math}
+\input{part6_appendix}
+
+\end{document}

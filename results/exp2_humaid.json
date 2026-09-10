@@ -1,0 +1,131 @@
+{
+  "published_baselines": {
+    "RoBERTa (125M)": 0.76,
+    "BERT (110M)": 0.758,
+    "DistilBERT (66M)": 0.758,
+    "XLM-RoBERTa": 0.758,
+    "FastText": 0.744,
+    "SVM (classical)": 0.731,
+    "Random Forest": 0.707
+  },
+  "budgets": [
+    {
+      "hash_bits": 12,
+      "n_features": 8192,
+      "accuracy": 0.7158311345646438,
+      "weighted_f1": 0.7132282179259584,
+      "macro_f1": 0.6852258820758774,
+      "median_latency_ms": 1.27309849995072,
+      "p99_latency_ms": 1.624759900041681,
+      "model_mb": 2.581974,
+      "vectorize_seconds": 13.037176529000135,
+      "fit_seconds": 32.019588168001064,
+      "members": {
+        "logreg": 26.657995102001223,
+        "sgd_mh": 5.2154288639994775,
+        "nb": 0.12688805099969613
+      },
+      "gate_calibration": {
+        "target_precision": 0.9,
+        "achieved": {
+          "coverage": 0.429616322340562,
+          "precision": 0.9190561529271206
+        },
+        "confidence_min": 0.6608695652173913,
+        "epistemic_max": 0.2234782608695652
+      },
+      "aurc": 0.832774989134397
+    },
+    {
+      "hash_bits": 14,
+      "n_features": 32768,
+      "accuracy": 0.7285620052770448,
+      "weighted_f1": 0.7256023148424978,
+      "macro_f1": 0.7021854778256709,
+      "median_latency_ms": 1.8160010004066862,
+      "p99_latency_ms": 2.3870436401375623,
+      "model_mb": 10.052247,
+      "vectorize_seconds": 13.011012655999366,
+      "fit_seconds": 43.76082531999964,
+      "members": {
+        "logreg": 40.45553251599995,
+        "sgd_mh": 3.1462322099996527,
+        "nb": 0.13987583900052414
+      },
+      "gate_calibration": {
+        "target_precision": 0.9,
+        "achieved": {
+          "coverage": 0.5203387655588348,
+          "precision": 0.9057953144266337
+        },
+        "confidence_min": 0.6195652173913043,
+        "epistemic_max": 0.15565217391304348
+      },
+      "aurc": 0.8410777729191796
+    },
+    {
+      "hash_bits": 16,
+      "n_features": 131072,
+      "accuracy": 0.746042216358839,
+      "weighted_f1": 0.7424846931759815,
+      "macro_f1": 0.7159996123026207,
+      "median_latency_ms": 4.935994500556262,
+      "p99_latency_ms": 5.636677480542857,
+      "model_mb": 36.408209,
+      "vectorize_seconds": 12.881758278999769,
+      "fit_seconds": 67.92595206000078,
+      "members": {
+        "logreg": 64.80262816899995,
+        "sgd_mh": 2.92647162799949,
+        "nb": 0.17727098400064278
+      },
+      "gate_calibration": {
+        "target_precision": 0.9,
+        "achieved": {
+          "coverage": 0.5397151289618889,
+          "precision": 0.9051355206847361
+        },
+        "confidence_min": 0.6608695652173913,
+        "epistemic_max": 0.2234782608695652
+      },
+      "aurc": 0.8496108774038259
+    }
+  ],
+  "best": {
+    "hash_bits": 16,
+    "n_features": 131072,
+    "accuracy": 0.746042216358839,
+    "weighted_f1": 0.7424846931759815,
+    "macro_f1": 0.7159996123026207,
+    "median_latency_ms": 4.935994500556262,
+    "p99_latency_ms": 5.636677480542857,
+    "model_mb": 36.408209,
+    "vectorize_seconds": 12.881758278999769,
+    "fit_seconds": 67.92595206000078,
+    "members": {
+      "logreg": 64.80262816899995,
+      "sgd_mh": 2.92647162799949,
+      "nb": 0.17727098400064278
+    },
+    "gate_calibration": {
+      "target_precision": 0.9,
+      "achieved": {
+        "coverage": 0.5397151289618889,
+        "precision": 0.9051355206847361
+      },
+      "confidence_min": 0.6608695652173913,
+      "epistemic_max": 0.2234782608695652
+    },
+    "aurc": 0.8496108774038259
+  },
+  "_meta": {
+    "timestamp": "2026-08-31T04:27:28",
+    "git": "nogit",
+    "seed": 42,
+    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "machine": "x86_64",
+    "python": "3.10.12",
+    "logical_cores": 2,
+    "ram_gb": 3.82
+  }
+}

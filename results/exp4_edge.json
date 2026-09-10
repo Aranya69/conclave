@@ -1,0 +1,213 @@
+{
+  "host": {
+    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "processor": "x86_64",
+    "python": "3.10.12",
+    "logical_cores": 2,
+    "total_ram_gb": 3.82
+  },
+  "host_calibration_score": 33898.0,
+  "model_bytes": 232794,
+  "memory_limit_enforceable": true,
+  "slm_reference": {
+    "TinyLlama-1.1B (int8)": {
+      "params_b": 1.1,
+      "weights_mb": 1100
+    },
+    "Qwen2.5-0.5B (int8)": {
+      "params_b": 0.5,
+      "weights_mb": 500
+    },
+    "RoBERTa-base (fp32)": {
+      "params_b": 0.125,
+      "weights_mb": 500
+    }
+  },
+  "profiles": [
+    {
+      "device": "host",
+      "key": "host",
+      "measured": {
+        "label": "host",
+        "n": 120,
+        "mean_ms": 2.470895241716183,
+        "median_ms": 2.37474999994447,
+        "p95_ms": 2.86507700002403,
+        "p99_ms": 3.065368000534363,
+        "max_ms": 3.358486001161509,
+        "std_ms": 0.20637625037538201,
+        "peak_rss_mb": 217.3359375,
+        "model_bytes": 232794,
+        "host_score": 0.0,
+        "trials": 5,
+        "trial_medians_ms": [
+          2.4217,
+          2.4005,
+          2.4159,
+          2.4013,
+          2.3747
+        ],
+        "noise_ratio": 1.02
+      },
+      "estimated": {
+        "device": "host",
+        "scaling_factor": 1.0,
+        "est_mean_ms": 2.470895241716183,
+        "est_p99_ms": 3.065368000534363,
+        "est_energy_mJ": 37.063428625742745,
+        "fits_in_ram": true
+      },
+      "ram_enforced": false
+    },
+    {
+      "device": "Jetson Nano (4 GB)",
+      "key": "jetson_nano",
+      "measured": {
+        "label": "Jetson Nano (4 GB)",
+        "n": 120,
+        "mean_ms": 2.461052558343605,
+        "median_ms": 2.3604480002177297,
+        "p95_ms": 2.967978000015137,
+        "p99_ms": 3.2321740000043064,
+        "max_ms": 3.9589369989698753,
+        "std_ms": 0.24451306340721837,
+        "peak_rss_mb": 217.3359375,
+        "model_bytes": 232794,
+        "host_score": 0.0,
+        "trials": 5,
+        "trial_medians_ms": [
+          2.3772,
+          2.3746,
+          2.386,
+          2.3604,
+          2.3772
+        ],
+        "noise_ratio": 1.011
+      },
+      "estimated": {
+        "device": "Jetson Nano (4 GB)",
+        "scaling_factor": 3.846153846153846,
+        "est_mean_ms": 9.465586762860019,
+        "est_p99_ms": 12.431438461555024,
+        "est_energy_mJ": 94.65586762860019,
+        "fits_in_ram": true
+      },
+      "ram_enforced": true
+    },
+    {
+      "device": "Raspberry Pi 4B (4 GB)",
+      "key": "rpi4b_4gb",
+      "measured": {
+        "label": "Raspberry Pi 4B (4 GB)",
+        "n": 120,
+        "mean_ms": 2.441186491675277,
+        "median_ms": 2.363559000514215,
+        "p95_ms": 2.926754999862169,
+        "p99_ms": 3.638155001681298,
+        "max_ms": 3.7257280000631,
+        "std_ms": 0.2397157622434071,
+        "peak_rss_mb": 217.3359375,
+        "model_bytes": 232794,
+        "host_score": 0.0,
+        "trials": 5,
+        "trial_medians_ms": [
+          2.3746,
+          2.3636,
+          2.3826,
+          2.3829,
+          2.3687
+        ],
+        "noise_ratio": 1.008
+      },
+      "estimated": {
+        "device": "Raspberry Pi 4B (4 GB)",
+        "scaling_factor": 3.571428571428571,
+        "est_mean_ms": 8.71852318455456,
+        "est_p99_ms": 12.993410720290349,
+        "est_energy_mJ": 55.79854838114918,
+        "fits_in_ram": true
+      },
+      "ram_enforced": true
+    },
+    {
+      "device": "Raspberry Pi 3B+",
+      "key": "rpi3bp",
+      "measured": {
+        "label": "Raspberry Pi 3B+",
+        "n": 120,
+        "mean_ms": 2.426640366608505,
+        "median_ms": 2.3600669992447365,
+        "p95_ms": 2.761571000519325,
+        "p99_ms": 2.865933000066434,
+        "max_ms": 2.967045998957474,
+        "std_ms": 0.15834629496933933,
+        "peak_rss_mb": 217.3359375,
+        "model_bytes": 232794,
+        "host_score": 0.0,
+        "trials": 5,
+        "trial_medians_ms": [
+          2.368,
+          2.3824,
+          2.3786,
+          2.3601,
+          2.3619
+        ],
+        "noise_ratio": 1.009
+      },
+      "estimated": {
+        "device": "Raspberry Pi 3B+",
+        "scaling_factor": 5.88235294117647,
+        "est_mean_ms": 14.274355097697086,
+        "est_p99_ms": 16.858429412155495,
+        "est_energy_mJ": 71.37177548848543,
+        "fits_in_ram": true
+      },
+      "ram_enforced": true
+    },
+    {
+      "device": "Raspberry Pi Zero 2 W",
+      "key": "rpi_zero2w",
+      "measured": {
+        "label": "Raspberry Pi Zero 2 W",
+        "n": 120,
+        "mean_ms": 2.485364216605982,
+        "median_ms": 2.375656999902276,
+        "p95_ms": 3.1381029984913766,
+        "p99_ms": 3.3691279986669542,
+        "max_ms": 3.628922000643797,
+        "std_ms": 0.2618697239090048,
+        "peak_rss_mb": 217.3359375,
+        "model_bytes": 232794,
+        "host_score": 0.0,
+        "trials": 5,
+        "trial_medians_ms": [
+          2.3757,
+          2.4068,
+          2.4078,
+          2.3779,
+          2.3784
+        ],
+        "noise_ratio": 1.014
+      },
+      "estimated": {
+        "device": "Raspberry Pi Zero 2 W",
+        "scaling_factor": 9.090909090909092,
+        "est_mean_ms": 22.594220150963476,
+        "est_p99_ms": 30.628436351517767,
+        "est_energy_mJ": 56.48555037740869,
+        "fits_in_ram": true
+      },
+      "ram_enforced": false
+    }
+  ],
+  "_meta": {
+    "timestamp": "2026-09-11T00:02:58",
+    "git": "nogit",
+    "seed": 42,
+    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "machine": "x86_64",
+    "python": "3.10.12",
+    "logical_cores": 2,
+    "ram_gb": 3.82
+  }
+}

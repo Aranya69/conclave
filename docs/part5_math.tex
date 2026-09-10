@@ -1,0 +1,384 @@
+% ======================================================================
+\section{The mathematics: where every equation comes from}\label{sec:math}
+% ======================================================================
+
+The paper contains one displayed equation and a dozen implicit ones. None of
+them are new --- that is the point. CONCLAVE's contribution is the \emph{composition},
+so every piece should be traceable to established work. This section states each
+one, says where it comes from, shows where it lives in the code, and explains
+what it does operationally.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.5cm}
+                 >{\raggedright\arraybackslash}p{5.6cm}
+                 >{\raggedright\arraybackslash}p{4.9cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Equation} &
+{\sffamily\bfseries\color{conclaveblue}Origin} &
+{\sffamily\bfseries\color{conclaveblue}In the code} \\
+\midrule
+Shannon entropy & Shannon 1948 & \file{brain/uncertainty.py} \\
+Soft-voting aggregation & Bayesian model averaging & \file{brain/ensemble.py} \\
+Aleatoric/epistemic split & Houlsby et al.\ 2011 (BALD) & \file{brain/uncertainty.py} \\
+Margin & Scheffer et al.\ 2001 & \file{brain/uncertainty.py} \\
+Vote entropy & Dagan \& Engelson 1995 & \file{brain/uncertainty.py} \\
+Risk--coverage, AURC & El-Yaniv \& Wiener 2010 & \file{brain/uncertainty.py} \\
+TF--IDF & Sp\"arck Jones 1972 & \file{brain/featurize.py} \\
+Hashing trick & Weinberger et al.\ 2009 & \file{brain/featurize.py} \\
+Kernel-weighted prior & Nadaraya--Watson & \file{memory/episodic.py} \\
+Linear opinion pool & Stone 1961 & \file{core/agent.py} \\
+A$^\star$ with admissible $h$ & Hart et al.\ 1968 & \file{planning/planner.py} \\
+Paired bootstrap & Efron 1979 & \file{experiments/exp3\_sequential.py} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ----------------------------------------------------------------------
+\subsection{Entropy, and why it is normalised}
+
+Shannon entropy of a distribution $p$ over $K$ actions:
+\begin{equation}
+\mathcal{H}[p] \;=\; -\sum_{k=1}^{K} p_k \log p_k
+\eqsrc{Shannon 1948}
+\end{equation}
+
+\noindent measured in nats. It is $0$ when $p$ puts all mass on one action, and
+maximal when $p$ is uniform, where $\mathcal{H}[\text{uniform}] = \log K$.
+
+Because CONCLAVE compares uncertainty across problems with different numbers of
+actions --- five tools here, ten humanitarian categories there --- every
+quantity is divided by $\log K$:
+\begin{equation}
+\tilde{\mathcal{H}}[p] \;=\; \frac{\mathcal{H}[p]}{\log K} \;\in\; [0,1].
+\end{equation}
+
+\noindent Without this the same gate threshold would mean different things in
+different deployments. In \file{conclave/brain/uncertainty.py} this is the
+\code{logk} divisor appearing in every return value.
+
+% ----------------------------------------------------------------------
+\subsection{Aggregating the committee}
+
+With $M$ members producing posteriors $p_1,\dots,p_M$ and weights $w_m$ summing
+to one, the ensemble posterior is the weighted mean:
+\begin{equation}
+\bar p \;=\; \sum_{m=1}^{M} w_m\, p_m .
+\label{eq:agg}
+\end{equation}
+
+\noindent This is the empirical form of Bayesian model averaging: treat the
+members as samples from a posterior over models and marginalise. With
+\code{weighting="uniform"} all $w_m = 1/M$, which is what the paper uses and is
+hard to beat when members are comparable in quality.
+
+\begin{keybox}[Why averaging \emph{probabilities} and not votes]
+Averaging hard votes throws away exactly the information the gate needs. Two
+committees can both vote 3--1 for the same action while one is unanimous in
+spirit ($0.9,0.9,0.9,0.4$) and the other barely decided
+($0.51,0.52,0.53,0.49$). Equation~\eqref{eq:agg} keeps that difference;
+majority voting destroys it.
+\end{keybox}
+
+% ----------------------------------------------------------------------
+\subsection{The decomposition --- the one equation in the paper}
+
+This is the equation that earns the committee its place. Total predictive
+uncertainty splits into two parts with different operational meanings:
+
+\begin{equation}
+\underbrace{\mathcal{H}[\bar p]}_{\text{total}}
+\;=\;
+\underbrace{\frac{1}{M}\sum_{m=1}^{M} \mathcal{H}[p_m]}_{\textbf{aleatoric}}
+\;+\;
+\underbrace{\left(\mathcal{H}[\bar p] - \frac{1}{M}\sum_{m=1}^{M}\mathcal{H}[p_m]\right)}_{\textbf{epistemic}}
+\label{eq:bald}
+\end{equation}
+
+\subsubsection{Where it comes from}
+
+The right-hand bracket is not an arbitrary residual --- it is the \textbf{mutual
+information} between the prediction $y$ and the model identity $\theta$:
+\begin{equation}
+\mathcal{I}(y;\theta \mid x)
+= \underbrace{\mathcal{H}\big[\mathbb{E}_{\theta}\, p(y\mid x,\theta)\big]}_{\mathcal{H}[\bar p]}
+- \underbrace{\mathbb{E}_{\theta}\big[\mathcal{H}[p(y\mid x,\theta)]\big]}_{\frac1M\sum_m \mathcal{H}[p_m]}
+\end{equation}
+using the standard identity $\mathcal{I}(y;\theta) = \mathcal{H}(y) - \mathcal{H}(y\mid\theta)$
+and approximating the expectation over $\theta$ by the finite committee. This
+quantity is the acquisition function from \textbf{Bayesian Active Learning by
+Disagreement} (BALD), introduced by Houlsby, Husz\'ar, Ghahramani and Lengyel in
+2011 for choosing which point to label next. CONCLAVE repurposes it: instead of
+asking \emph{which example should I label}, it asks \emph{should I act at all}.
+
+Using a deliberately diverse ensemble as the stand-in for a posterior over
+models follows Lakshminarayanan et al.\ (2017), who showed ensembles give
+uncertainty estimates competitive with far more expensive Bayesian methods.
+
+\subsubsection{Why the epistemic term cannot go negative}
+
+Entropy is concave. By Jensen's inequality, for any weights $w_m$,
+\begin{equation}
+\mathcal{H}\Big[\sum_m w_m p_m\Big] \;\ge\; \sum_m w_m\, \mathcal{H}[p_m],
+\end{equation}
+so $\mathcal{I} \ge 0$ always, with equality exactly when all members agree.
+The code clamps at zero anyway (\code{max(H\_mean - mean\_H, 0.0)}) purely to
+absorb floating-point noise.
+
+\begin{okbox}[Verified numerically]
+Over 4{,}000 randomly generated committees (2--6 members, 5 actions), the
+identity in \eqref{eq:bald} held to $4.4\times10^{-16}$ and the epistemic term
+was non-negative in every single case. The check is reproducible; the
+degenerate cases below are the ones worth memorising.
+\end{okbox}
+
+\subsubsection{What the two terms actually mean}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.2cm}rrr>{\raggedright\arraybackslash}p{5.0cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Committee state} &
+{\sffamily\bfseries\color{conclaveblue}conf} &
+{\sffamily\bfseries\color{conclaveblue}alea} &
+{\sffamily\bfseries\color{conclaveblue}epis} &
+{\sffamily\bfseries\color{conclaveblue}Right response} \\
+\midrule
+All agree, confident & 0.90 & 0.36 & \textbf{0.00} & Act \\
+All agree, all unsure & 0.33 & \textbf{1.00} & 0.00 & Abstain --- more data will not help \\
+Members disagree & 0.34 & 0.33 & \textbf{0.67} & Gather or escalate --- out of competence \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Rows two and three are the entire argument for the decomposition.
+Both have confidence around $0.33$. A single model reporting only ``33\%
+confident'' cannot distinguish them --- yet one is a genuinely ambiguous
+situation where no amount of extra sensing helps, and the other is the model
+being out of its depth. \code{UncertaintyGate} routes them to
+\code{ABSTAIN} and \code{GATHER}/\code{ESCALATE} respectively.
+
+\begin{warnbox}[The honest caveat, which is also in the paper]
+Measured on CONCLAVE's own benchmarks, the decomposition did \emph{not} beat plain
+maximum-posterior confidence at either selective prediction or shift detection
+(AUROC 0.955 for the epistemic term versus 0.960 for confidence on novel text).
+The theory is clean and the degenerate cases above are real, but on these tasks
+the extra machinery did not pay for itself. Equation~\eqref{eq:bald} is
+reported because it is what the framework computes, not because the measurement
+vindicated it.
+\end{warnbox}
+
+% ----------------------------------------------------------------------
+\subsection{Margin and vote entropy}
+
+Two cheaper signals the gate also consults. The \textbf{margin} is the gap
+between the top two actions,
+\begin{equation}
+\mathrm{margin}(\bar p) \;=\; \bar p_{(1)} - \bar p_{(2)},
+\eqsrc{Scheffer et al.\ 2001}
+\end{equation}
+where $\bar p_{(i)}$ is the $i$-th largest component. It catches the case where
+the top probability is respectable but a rival is right behind it --- a
+situation entropy alone smooths over.
+
+\textbf{Vote entropy} discards the probabilities and looks only at which action
+each member would pick:
+\begin{equation}
+V_k = \frac{1}{M}\sum_{m=1}^{M} \mathbf{1}\!\left[\arg\max_j (p_m)_j = k\right],
+\qquad
+\tilde{\mathcal{H}}[V]
+\eqsrc{Dagan \& Engelson 1995}
+\end{equation}
+This is the original query-by-committee disagreement measure (Seung, Opper and
+Sompolinsky, 1992). It is robust to a single badly-calibrated member, because
+one member's overconfidence cannot inflate a hard vote.
+
+% ----------------------------------------------------------------------
+\subsection{Selective prediction: the risk--coverage curve}\label{sec:selective}
+
+An agent that may decline to act is a \emph{selective classifier}: a pair
+$(f,g)$ where $f$ predicts and $g \in \{0,1\}$ decides whether to act.
+Its two figures of merit are
+\begin{equation}
+\mathrm{coverage} = \mathbb{E}[g(x)],
+\qquad
+\mathrm{selective\ risk} = \frac{\mathbb{E}\big[\ell(f(x),y)\,g(x)\big]}{\mathbb{E}[g(x)]},
+\eqsrc{El-Yaniv \& Wiener 2010}
+\end{equation}
+that is, the error rate \emph{among the decisions actually acted upon}. Sweeping
+the gate threshold traces a curve; the area under it (AURC) summarises how well
+the uncertainty signal ranks decisions. \code{risk\_coverage\_curve} computes it,
+and CONCLAVE reports AURC $=0.946$ on the sequential task.
+
+\code{UncertaintyGate.calibrate} inverts this: given a target precision, it
+searches a $24\times24$ grid over $(\text{confidence\_min},
+\text{epistemic\_max})$ for the thresholds that \textbf{maximise coverage}
+subject to precision-on-accepted $\ge$ target. That is the standard
+constrained form of the selective-classification problem, and it is why the
+gate's thresholds are calibrated rather than guessed.
+
+% ----------------------------------------------------------------------
+\subsection{Text features: TF--IDF and the hashing trick}
+
+\subsubsection{TF--IDF, exactly as scikit-learn computes it}
+
+For term $t$ in document $d$, with $n$ documents and $\mathrm{df}(t)$ containing $t$:
+\begin{align}
+\mathrm{tf}'(t,d) &= 1 + \log \mathrm{tf}(t,d) && \text{(\code{sublinear\_tf=True})}\\
+\mathrm{idf}(t)   &= \log\frac{1+n}{1+\mathrm{df}(t)} + 1 && \text{(\code{smooth\_idf=True})}\\
+x_{t,d} &= \mathrm{tf}'(t,d)\cdot \mathrm{idf}(t), \qquad
+x_d \leftarrow x_d / \lVert x_d\rVert_2 &&
+\eqsrc{Sp\"arck Jones 1972}
+\end{align}
+
+\begin{okbox}[Verified against scikit-learn]
+Implementing the three lines above by hand reproduces
+\code{TfidfVectorizer(sublinear\_tf=True)} to $10^{-12}$. The $+1$ terms are
+smoothing, so an unseen term never divides by zero; the sublinear \code{tf}
+stops a word repeated twenty times counting twenty times as much.
+\end{okbox}
+
+\noindent Because rows are $L_2$-normalised, the dot product between a query
+vector and a tool-specification vector \emph{is} their cosine similarity ---
+which is precisely feature \#1 of \code{ToolRouter}.
+
+\subsubsection{The hashing trick, and what it costs}
+
+Storing a vocabulary makes the model grow with the corpus. Instead, a hash
+function $h : \text{term} \to \{1,\dots,D\}$ maps terms directly to indices:
+\begin{equation}
+\phi_j(x) \;=\; \sum_{i \,:\, h(i)=j} x_i
+\eqsrc{Weinberger et al.\ 2009}
+\end{equation}
+
+\noindent The feature space is fixed at $D$ regardless of how much text is seen
+--- there is no stored vocabulary at all. This is why \code{n\_word\_features}
+sets the artefact size directly, and it is the single most important property
+for microcontroller-class deployment.
+
+\begin{warnbox}[CONCLAVE uses the unsigned variant, which is biased]
+Weinberger et al.'s analysis relies on a \emph{signed} hash, $\xi(i)\in\{\pm1\}$,
+which makes collisions cancel in expectation and preserves inner products
+without bias. CONCLAVE sets \code{alternate\_sign=False}, so colliding terms always
+add \emph{positively} and similarities are biased slightly upward.
+
+This is a deliberate trade: \code{ComplementNB} requires non-negative inputs,
+and keeping a generative member in the committee was judged worth the bias.
+With $D = 2^{16}$ collisions are rare enough that it does not show up in the
+measurements, but it is a real approximation and worth knowing if you shrink
+$D$ aggressively.
+\end{warnbox}
+
+% ----------------------------------------------------------------------
+\subsection{Episodic memory as a kernel-weighted prior}
+
+Given a query key $z$ and retrieved cases $(z_i, a_i, r_i)$ with similarity
+$s_i = \max(0, 1 - d_i)$, the memory produces a prior over actions:
+\begin{equation}
+\pi_k \;\propto\; \sum_{i \,:\, a_i = k,\; r_i > 0} s_i \, r_i,
+\qquad
+\pi \leftarrow \pi^{1/T} \big/ \textstyle\sum_k \pi_k^{1/T}
+\end{equation}
+
+\noindent This is a Nadaraya--Watson kernel-weighted average with a
+truncated-cosine kernel, restricted to cases that were actually rewarded, and
+$T$ a temperature that sharpens ($T<1$) or flattens ($T>1$) the result. When no
+retrieved case has positive reward it returns the uniform distribution, so
+memory never biases a decision it knows nothing about.
+
+The result is combined with the ensemble posterior as a \textbf{linear opinion
+pool}:
+\begin{equation}
+p_{\text{final}} \;=\; (1-\omega)\,\bar p \;+\; \omega\,\pi,
+\qquad \omega = \code{memory\_weight} = 0.25
+\eqsrc{Stone 1961}
+\end{equation}
+
+\noindent A linear pool, unlike a logarithmic one, cannot veto: if either source
+assigns an action non-negligible mass it survives. For an agent that must not be
+talked out of a correct action by a stale memory, that is the safer choice.
+
+% ----------------------------------------------------------------------
+\subsection{The planner, and an honest caveat}
+
+\code{Planner.plan} is A$^\star$ over sets of predicates. With $g(s)$ the cost so
+far and $h(s)$ an estimate of the cost remaining, it expands the node minimising
+$f(s) = g(s) + h(s)$, and A$^\star$ returns an optimal plan \emph{provided}
+$h$ never overestimates --- the admissibility condition of Hart, Nilsson and
+Raphael (1968).
+
+CONCLAVE uses the goal-count heuristic:
+\begin{equation}
+h(s) \;=\; \big|\,G \setminus s\,\big|
+\end{equation}
+the number of goal predicates not yet satisfied.
+
+\begin{dangerbox}[This heuristic is not admissible in general]
+The docstring calls it admissible. That holds only under two assumptions:
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item every action adds \textbf{at most one} goal predicate, and
+  \item every action costs \textbf{at least 1}.
+\end{enumerate}
+Break either and $h$ can overestimate, and A$^\star$ may return a suboptimal
+plan. A concrete case, reproducible in three tools:
+\begin{lstlisting}[style=py]
+step_a     : effects {a},       cost 0.1
+finish_bc  : requires a, effects {b,c}, cost 0.5   # total 0.6  <- optimal
+direct     : effects {a,b,c},   cost 1.0
+# goal = {a,b,c}   ->   CONCLAVE returns ['direct'], cost 1.0
+\end{lstlisting}
+At state $\{a\}$ we have $g=0.1$ and $h=|\{b,c\}|=2$, so $f=2.1$ --- but the
+true remaining cost is $0.5$. The optimal path is pushed behind the
+\code{direct} goal node at $f=1.0$, which is popped first.
+\end{dangerbox}
+
+\noindent The shipped disaster tools all have single-predicate effects and unit
+costs, so the guarantee holds there. If you add a multi-effect or sub-unit-cost
+tool, either accept ``good but not provably optimal'', or restore admissibility
+with
+\begin{equation}
+h(s) \;=\; \big|G \setminus s\big| \cdot \frac{c_{\min}}{e_{\max}},
+\end{equation}
+where $c_{\min}$ is the cheapest action cost and $e_{\max}$ the most goal
+predicates any single action can add. Setting $h \equiv 0$ turns A$^\star$ into
+uniform-cost search: always optimal, just slower.
+
+% ----------------------------------------------------------------------
+\subsection{The paired bootstrap in the headline experiment}
+
+The connectivity result compares two policies on \emph{the same} episode seeds,
+so the comparison is paired. For per-episode differences
+$d_i = R_i^{\text{CONCLAVE}} - R_i^{\text{cloud}}$, resample indices with
+replacement $B=4000$ times and take the empirical $2.5$th and $97.5$th
+percentiles of $\bar d^{*}$:
+\begin{equation}
+\bar d^{*(b)} = \frac{1}{n}\sum_{i=1}^{n} d_{\,\iota^{(b)}_i},
+\qquad
+\text{CI}_{95} = \Big[\,Q_{2.5}\big(\bar d^{*}\big),\; Q_{97.5}\big(\bar d^{*}\big)\Big]
+\eqsrc{Efron 1979}
+\end{equation}
+
+\noindent Pairing matters here: episode difficulty varies enormously (when the
+surge arrives, how big it is), and pairing removes that variance instead of
+letting it swamp the effect. It is also what lets the paper make its most
+important negative claim --- that at zero outage the two are
+\emph{indistinguishable}, $\Delta = 0.6$ with CI $[-0.7, 1.9]$ --- which is the
+check that the comparison was fair in the first place.
+
+% ----------------------------------------------------------------------
+\subsection{Reading list, in dependency order}
+
+\begin{enumerate}[leftmargin=*,itemsep=3pt]
+  \item \textbf{Shannon (1948)}, \emph{A Mathematical Theory of Communication} --- entropy.
+  \item \textbf{Sp\"arck Jones (1972)} --- inverse document frequency.
+  \item \textbf{Hart, Nilsson \& Raphael (1968)} --- A$^\star$ and admissibility.
+  \item \textbf{Seung, Opper \& Sompolinsky (1992)}; \textbf{Dagan \& Engelson (1995)} --- query by committee, vote entropy.
+  \item \textbf{Breiman (2001)} --- random forests; where ensemble diversity comes from.
+  \item \textbf{Rennie et al.\ (2003)} --- complement naive Bayes.
+  \item \textbf{Weinberger et al.\ (2009)} --- the hashing trick and its guarantees.
+  \item \textbf{El-Yaniv \& Wiener (2010)} --- selective classification.
+  \item \textbf{Houlsby et al.\ (2011)} --- BALD; equation~\eqref{eq:bald}. \emph{Start here if you read only one.}
+  \item \textbf{Lakshminarayanan et al.\ (2017)} --- ensembles as practical uncertainty.
+\end{enumerate}

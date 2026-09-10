@@ -1,0 +1,315 @@
+% ======================================================================
+\section{Using the framework}\label{sec:framework}
+% ======================================================================
+
+This section builds a complete agent from nothing. The running example is a
+solar-powered borehole pump serving a village: it has a tank-level sensor, a
+turbidity probe, a battery monitor and a flow meter, plus a text field where a
+caretaker types what they see. There is no reliable network. The full file is
+\file{examples/pump\_station.py} --- run it with
+\code{python examples/pump\_station.py}.
+
+\begin{keybox}[The shape of every CONCLAVE program]
+\textbf{tools} $\rightarrow$ \textbf{training observations} $\rightarrow$
+\textbf{featuriser} $\rightarrow$ \textbf{brain} $\rightarrow$
+\textbf{gate + constraints} $\rightarrow$ \textbf{agent}.\\[2mm]
+Six steps, in that order, always. The rest is detail.
+\end{keybox}
+
+\subsection{Step 1 --- declare what the agent can do}
+
+A tool is a Python function plus a schema. The \code{@tool} decorator infers the
+schema from the type annotations, the way a typed route converter does:
+
+\begin{codebox}[Tools]
+\begin{lstlisting}[style=py]
+from conclave.tools.base import tool
+from conclave import ToolRegistry
+
+@tool(description="Start the borehole pump to refill the tank")
+def start_pump(minutes: int = 30) -> str:
+    return f"pump running {minutes} min"
+
+@tool(description="Open the chlorine doser to treat the tank", irreversible=True)
+def dose_chlorine(ml: int = 50) -> str:
+    return f"dosed {ml} ml"
+
+@tool(description="Send an SMS to the maintenance technician")
+def call_technician(reason: str = "unknown") -> str:
+    return f"SMS sent: {reason}"
+
+registry = ToolRegistry([start_pump, dose_chlorine, call_technician])
+\end{lstlisting}
+\end{codebox}
+
+\noindent Three arguments to \code{@tool} carry real weight:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm}
+                 >{\raggedright\arraybackslash}p{12.2cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Argument} &
+{\sffamily\bfseries\color{conclaveblue}Effect} \\
+\midrule
+\code{description} & Becomes matchable text for \code{ToolRouter}. Write it the
+way a user would describe the need, not the way you named the function. \\
+\code{irreversible} & Marks the tool for the constraint layer and lets the
+planner exclude it. Dosing chemicals is irreversible; sending an SMS is not. \\
+\code{preconditions} / \code{effects} & Predicate lists the planner searches
+over. Leave empty if you are not planning. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Step 2 --- observations}
+
+An \code{Observation} carries numeric features, optional free text, and metadata.
+Either modality may be empty; the featuriser handles whichever is present.
+
+\begin{codebox}[Observations]
+\begin{lstlisting}[style=py]
+from conclave import Observation
+
+Observation(
+    features={"tank_level_pct": 11.0, "turbidity_ntu": 1.2,
+              "battery_volts": 12.9, "flow_lpm": 0.0},
+    text="tank nearly empty this morning",
+)
+\end{lstlisting}
+\end{codebox}
+
+Training data is a list of observations and a matching list of action names.
+In the example these are generated synthetically, five scenarios $\times$ 120
+samples; in a real deployment they are logged decisions from whoever runs the
+station today.
+
+\begin{warnbox}[Two constraints on your training data]
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=2pt]
+  \item \code{EnsembleBrain} needs \textbf{at least two classes}, and enough
+        examples per class for its internal cross-validation. A handful of rows
+        will raise.
+  \item Class names become action names. They must match tool names exactly, or
+        \code{Agent} will decide on an action that is not in the registry and
+        silently do nothing.
+\end{itemize}
+\end{warnbox}
+
+\subsection{Step 3 --- featurise under a budget}
+
+\begin{codebox}[Featurisation]
+\begin{lstlisting}[style=py]
+from conclave.brain.featurize import (BudgetedTextFeaturizer, FusedFeaturizer,
+                                   TabularFeaturizer)
+
+fz = FusedFeaturizer(
+    text=BudgetedTextFeaturizer(n_word_features=2**12, n_char_features=2**12),
+    tabular=TabularFeaturizer(),
+).fit(observations)
+
+X = fz.transform(observations)
+\end{lstlisting}
+\end{codebox}
+
+\begin{keybox}[The feature budget is the deployment knob]
+\code{BudgetedTextFeaturizer} uses the hashing trick, so it stores
+\textbf{no vocabulary at all} --- its size is fixed when you construct it and
+does not grow with your corpus. \code{n\_word\_features} and
+\code{n\_char\_features} therefore set the model size directly:
+$2^{12}$ gives a 2.6\,MB artefact, $2^{16}$ gives 36\,MB. Table~III of the
+paper shows what that costs in accuracy. \S\ref{sec:math} explains why the
+hashing trick works and what it costs statistically.
+\end{keybox}
+
+\subsection{Step 4 --- the brain}
+
+\begin{codebox}[The committee]
+\begin{lstlisting}[style=py]
+from conclave import EnsembleBrain
+
+brain = EnsembleBrain().fit(X, labels)
+
+print(list(brain.members_))                        # ['logreg', 'sgd_mh', 'nb']
+print(brain.weights_.round(3))                     # [0.333 0.333 0.333]
+print(brain.footprint_bytes()["_total"] / 1000)    # 24.2  (KB)
+\end{lstlisting}
+\end{codebox}
+
+\noindent Twenty-four kilobytes. That is the entire decision-making apparatus
+for this agent. \S\ref{sec:models} covers what is inside and how to change it.
+
+\subsection{Step 5 --- the gate and the safety layer}
+
+\begin{codebox}[Uncertainty gate and hard constraints]
+\begin{lstlisting}[style=py]
+from conclave import UncertaintyGate
+from conclave.planning.rules import ConstraintSet, require_confidence
+
+gate = UncertaintyGate(epistemic_max=0.30,   # committee disagreement ceiling
+                       aleatoric_max=0.75,   # genuine-ambiguity ceiling
+                       confidence_min=0.45,
+                       margin_min=0.05,
+                       allow_gather=False)   # no cheap extra sensing here
+
+# No statistical model may dose chemicals on a weak majority.
+constraints = ConstraintSet([require_confidence(0.80, ["dose_chlorine"])])
+\end{lstlisting}
+\end{codebox}
+
+\begin{keybox}[The constraint layer sits \emph{above} the learned policy]
+A violated constraint does not adjust a probability --- it converts the action
+into a recorded \code{ESCALATE}. This is deliberate: no statistical model should
+be able to authorise an irreversible act on its own, however confident it
+claims to be.
+\end{keybox}
+
+\noindent Rather than hand-tuning those four thresholds, you can calibrate them
+against a target precision on held-out data:
+
+\begin{codebox}[Calibrating instead of guessing]
+\begin{lstlisting}[style=py]
+gate = brain.calibrate_gate(X_val, y_val, target_precision=0.90)
+print(gate.calibration_)
+# {'target_precision': 0.9,
+#  'achieved': {'coverage': 0.52, 'precision': 0.906}, ...}
+\end{lstlisting}
+\end{codebox}
+
+\noindent Read that as: \emph{acting on 52\% of decisions and deferring the rest
+buys 90.6\% accuracy on the ones acted upon}. \S\ref{sec:selective} explains the
+selective-prediction machinery behind it.
+
+\subsection{Step 6 --- assemble and decide}
+
+\begin{codebox}[The agent]
+\begin{lstlisting}[style=py]
+from conclave import Agent, EpisodicMemory
+
+agent = Agent(brain=brain, featurizer=fz, registry=registry, gate=gate,
+              constraints=constraints, memory=EpisodicMemory(capacity=500))
+
+d = agent.decide(Observation(features=..., text="very cloudy water"))
+print(d.action, d.confidence, d.disagreement, d.gate)
+\end{lstlisting}
+\end{codebox}
+
+\noindent Running the four probe observations from the example file gives:
+
+\begin{codebox}[Actual output of examples/pump\_station.py]
+\begin{lstlisting}[style=out]
+observation                            action             conf  disag      gate
+tank nearly empty this morning         <escalate>         0.65   0.40  escalate
+very cloudy water since the storm      dose_chlorine()    1.00   0.00       act
+no flow and the battery looks flat     call_technician()  0.78   0.19       act
+strange smell from the wellhead ...    <escalate>         0.46   0.35  escalate
+\end{lstlisting}
+\end{codebox}
+
+All four rows are worth reading carefully, because two of them are the agent
+working and two are the agent \emph{knowing it should not act}:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.0cm}
+                 >{\raggedright\arraybackslash}p{11.2cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Row} &
+{\sffamily\bfseries\color{conclaveblue}What actually happened} \\
+\midrule
+cloudy water & Textbook case. Every member agrees (disagreement 0.00), confidence
+1.00 clears the 0.80 chlorine constraint, the tool fires. \\
+no flow, flat battery & Correct call at 0.78 confidence with mild disagreement.
+Note it would \emph{not} have been allowed to dose chlorine at this confidence. \\
+strange smell & Nothing like it in training. The committee splits (0.35), the gate
+escalates rather than guessing. \textbf{This is the behaviour the whole design
+exists to produce.} \\
+tank nearly empty & An honest failure. Training said ``tank low overnight draw
+down''; the probe says ``nearly empty''. Hashed $n$-grams have no idea those mean
+the same thing, so the members split and it escalates. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{warnbox}[That last row is a real limitation, not a bug]
+CONCLAVE's text features are lexical. They have no compositional semantics, so
+paraphrase, negation and synonymy hurt it more than they hurt a transformer.
+The paper states this in its limitations; the example reproduces it rather than
+hiding it. If your text varies a lot in phrasing, either widen your training
+vocabulary or lean harder on the numeric features, which have no such problem.
+\end{warnbox}
+
+\subsection{What a \code{Decision} carries}
+
+Every decision is fully auditable --- this matters when an agent is making
+consequential calls unsupervised:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.6cm}
+                 >{\raggedright\arraybackslash}p{11.6cm}@{}}
+\toprule
+\rowcolor{conclavebg}
+{\sffamily\bfseries\color{conclaveblue}Field} &
+{\sffamily\bfseries\color{conclaveblue}Meaning} \\
+\midrule
+\code{action}        & What it decided: a tool call, or abstain / gather / escalate \\
+\code{posterior}     & Probability over every action \\
+\code{member\_votes} & What \emph{each} committee member believed, separately \\
+\code{confidence}    & Largest posterior probability \\
+\code{disagreement}  & Normalised epistemic uncertainty --- the spread of opinion \\
+\code{entropy}       & Normalised total uncertainty \\
+\code{margin}        & Top-1 minus top-2 probability \\
+\code{gate}          & Which branch fired, and therefore why \\
+\code{latency\_ms}   & Wall-clock cost of this decision \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Running a sequential environment}
+
+\code{agent.decide()} handles one observation. For a control loop, \code{agent.run()}
+drives any environment exposing \code{reset()} and \code{step(action)}:
+
+\begin{codebox}[Episodes]
+\begin{lstlisting}[style=py]
+from conclave.envs.disaster import DisasterConfig, FloodResponseEnv
+
+episode = agent.run(FloodResponseEnv(DisasterConfig(outage_prob=0.3)),
+                    max_steps=40)
+
+print(episode.total_reward, episode.n_escalations)
+print(episode.to_dict())          # JSON-serialisable audit trail
+\end{lstlisting}
+\end{codebox}
+
+\noindent With \code{memory} attached and \code{learn\_online=True} (the default),
+successful steps are written back into episodic memory as cases, so the agent
+adapts within a deployment without retraining.
+
+\subsection{Tool routing for open vocabularies}
+
+\code{EnsembleBrain} classifies into a \emph{fixed} action set. When tools come
+and go at runtime, use \code{ToolRouter} instead: it scores \emph{(request, tool)}
+pairs, so a tool registered after training is scored by the same features as
+any other.
+
+\begin{codebox}[Routing]
+\begin{lstlisting}[style=py]
+from conclave.brain.router import ToolRouter
+
+router = ToolRouter(abstain=True, abstain_threshold=0.35).fit(
+    queries, candidate_sets, targets)
+
+result = router.route("people stuck on a roof in sector 4, send help",
+                      registry.specs())
+print(result.tool, result.scores, result.latency_ms)
+\end{lstlisting}
+\end{codebox}
+
+\noindent \code{result.tool} is \code{None} when nothing scores above the
+abstention threshold --- which is the correct answer more often than agent
+frameworks like to admit. Try \code{python demo.py route} and give it something
+outside its competence; it will show you flat scores rather than a confident
+mistake.

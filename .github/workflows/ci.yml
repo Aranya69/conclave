@@ -1,0 +1,64 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: py${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[boost,dev]"
+
+      # No data download: the smoke tests build their own agents from the
+      # simulator, and the paper-claim tests read the committed results/*.json.
+      - name: Test
+        run: pytest -q
+
+      - name: Import check on a clean interpreter
+        run: python -c "import conclave; print(conclave.__version__)"
+
+  edge:
+    name: emulated aarch64 (Raspberry Pi target)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Proves the wheels exist for ARM and the agent runs there. Timings from
+      # this job are meaningless (QEMU) and deploy/pi_check.py says so itself.
+      - name: Build the ARM64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile.pi4
+          platforms: linux/arm64
+          load: true
+          tags: conclave:pi4
+
+      - name: Run the agent under emulation
+        run: docker run --rm --platform linux/arm64 conclave:pi4 python deploy/pi_check.py

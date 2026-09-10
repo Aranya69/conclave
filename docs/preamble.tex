@@ -1,0 +1,126 @@
+% ===================== CONCLAVE Guide - shared preamble =====================
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{courier}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[table,dvipsnames]{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage[most]{tcolorbox}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{tocloft}
+\usepackage[hidelinks]{hyperref}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc,fit,backgrounds,decorations.pathreplacing}
+\pgfplotsset{compat=1.16}
+
+% ------------------------------- palette --------------------------------
+\definecolor{conclaveblue}   {HTML}{1B4F72}
+\definecolor{conclavelight}  {HTML}{1B6CA8}
+\definecolor{conclavesky}    {HTML}{5DADE2}
+\definecolor{conclaveteal}   {HTML}{16A085}
+\definecolor{conclaveamber}  {HTML}{B9770E}
+\definecolor{conclavered}    {HTML}{C0392B}
+\definecolor{conclavegrey}   {HTML}{5D6D7E}
+\definecolor{conclavebg}     {HTML}{F4F7FA}
+\definecolor{conclavecode}   {HTML}{FBFCFD}
+\definecolor{conclaverule}   {HTML}{D5DBDB}
+
+% ------------------------------- headings -------------------------------
+\titleformat{\section}
+  {\normalfont\sffamily\Large\bfseries\color{conclaveblue}}
+  {\thesection}{0.8em}{}[{\color{conclavesky}\titlerule[1pt]}]
+\titleformat{\subsection}
+  {\normalfont\sffamily\large\bfseries\color{conclavelight}}{\thesubsection}{0.7em}{}
+\titleformat{\subsubsection}
+  {\normalfont\sffamily\normalsize\bfseries\color{conclavegrey}}{\thesubsubsection}{0.6em}{}
+
+\renewcommand{\cftsecfont}{\sffamily\bfseries\color{conclaveblue}}
+\renewcommand{\cftsecpagefont}{\sffamily\bfseries\color{conclaveblue}}
+\renewcommand{\cftsubsecfont}{\sffamily\color{conclavegrey}}
+
+\pagestyle{fancy}\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{conclaverule}\leaders\hrule height \headrulewidth\hfill}}
+\fancyhead[L]{\sffamily\footnotesize\color{conclavegrey}CONCLAVE --- Practical Guide}
+\fancyhead[R]{\sffamily\footnotesize\color{conclavegrey}\nouppercase{\leftmark}}
+\fancyfoot[C]{\sffamily\footnotesize\color{conclavegrey}\thepage}
+
+% ------------------------------- listings -------------------------------
+\lstdefinestyle{basestyle}{
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true, breakatwhitespace=false, columns=fullflexible,
+  showstringspaces=false, keepspaces=true, tabsize=2,
+  frame=none, backgroundcolor=\color{conclavecode},
+  xleftmargin=6pt, xrightmargin=2pt, framexleftmargin=6pt,
+  aboveskip=2pt, belowskip=2pt,
+  literate={-}{{-}}1 {~}{{\textasciitilde}}1 {^}{{\textasciicircum}}1
+           {>}{{\textgreater}}1 {<}{{\textless}}1
+}
+\lstdefinestyle{py}{style=basestyle, language=Python,
+  keywordstyle=\color{conclaveblue}\bfseries,
+  commentstyle=\color{conclaveteal}\itshape,
+  stringstyle=\color{conclaveamber},
+  emph={self,Observation,Action,Agent,EnsembleBrain,ToolRegistry,UncertaintyGate,
+        EpisodicMemory,Planner,Goal,Tool,FusedFeaturizer,TabularFeaturizer,
+        BudgetedTextFeaturizer,ToolRouter,DeviceProfile},
+  emphstyle=\color{conclavelight}\bfseries}
+\lstdefinestyle{shell}{style=basestyle, language=bash,
+  keywordstyle=\color{conclaveblue}\bfseries,
+  commentstyle=\color{conclavegrey}\itshape,
+  stringstyle=\color{conclaveamber},
+  morekeywords={py,python,pip,pytest,docker,qemu,uname,sudo,apt,git,New-Item,Set-ExecutionPolicy}}
+\lstdefinestyle{out}{style=basestyle,
+  basicstyle=\ttfamily\scriptsize\color{black!80}}
+\lstset{style=py}
+
+% ------------------------------- boxes ----------------------------------
+\newtcolorbox{keybox}[1][]{
+  enhanced, breakable, colback=conclavebg, colframe=conclaveblue,
+  boxrule=0pt, leftrule=3pt, arc=1pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\sffamily\bfseries\color{white},
+  coltitle=white, colbacktitle=conclaveblue, attach boxed title to top left=
+  {xshift=6pt, yshift=-2pt}, boxed title style={boxrule=0pt, arc=1pt},
+  title={#1}}
+\newtcolorbox{warnbox}[1][]{
+  enhanced, breakable, colback=conclaveamber!6, colframe=conclaveamber,
+  boxrule=0pt, leftrule=3pt, arc=1pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+  coltitle=white, colbacktitle=conclaveamber, attach boxed title to top left=
+  {xshift=6pt, yshift=-2pt}, boxed title style={boxrule=0pt, arc=1pt},
+  fonttitle=\sffamily\bfseries, title={#1}}
+\newtcolorbox{dangerbox}[1][]{
+  enhanced, breakable, colback=conclavered!5, colframe=conclavered,
+  boxrule=0pt, leftrule=3pt, arc=1pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+  coltitle=white, colbacktitle=conclavered, attach boxed title to top left=
+  {xshift=6pt, yshift=-2pt}, boxed title style={boxrule=0pt, arc=1pt},
+  fonttitle=\sffamily\bfseries, title={#1}}
+\newtcolorbox{okbox}[1][]{
+  enhanced, breakable, colback=conclaveteal!6, colframe=conclaveteal,
+  boxrule=0pt, leftrule=3pt, arc=1pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+  coltitle=white, colbacktitle=conclaveteal, attach boxed title to top left=
+  {xshift=6pt, yshift=-2pt}, boxed title style={boxrule=0pt, arc=1pt},
+  fonttitle=\sffamily\bfseries, title={#1}}
+\newtcolorbox{codebox}[1][]{
+  enhanced, breakable, colback=conclavecode, colframe=conclaverule,
+  boxrule=0.6pt, arc=2pt, left=2pt, right=2pt, top=4pt, bottom=4pt,
+  fonttitle=\sffamily\bfseries\footnotesize\color{conclavegrey},
+  coltitle=conclavegrey, colbacktitle=conclaverule!45,
+  attach boxed title to top left={xshift=8pt, yshift*=-2pt},
+  boxed title style={boxrule=0pt, arc=1pt}, title={#1}}
+
+% ------------------------------- helpers --------------------------------
+\newcommand{\code}[1]{\texttt{\color{conclaveblue}#1}}
+\newcommand{\file}[1]{\texttt{\color{conclaveteal}#1}}
+\newcommand{\key}[1]{\tikz[baseline=(k.base)]{\node[draw=conclavegrey!60,fill=gray!8,
+  rounded corners=2pt,inner sep=2pt,font=\sffamily\scriptsize](k){#1};}}
+% must survive being used inside equation/align, hence \text
+\newcommand{\eqsrc}[1]{\hfill\text{\sffamily\scriptsize\color{conclavegrey}[#1]}}
+\newcommand{\bignum}[2]{{\sffamily\bfseries\color{conclavelight}#1}\,{\sffamily\scriptsize\color{conclavegrey}#2}}
