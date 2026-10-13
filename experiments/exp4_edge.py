@@ -53,7 +53,9 @@ def build_agent(hash_bits: int = 13):
                                     n_char_features=2 ** hash_bits),
         tabular=TabularFeaturizer(),
     ).fit(obs)
-    brain = EnsembleBrain().fit(fz.transform(obs), lab)
+    # weighting pinned: this experiment's published numbers were produced with
+    # uniform averaging, before the library default became 'logloss' (see exp6).
+    brain = EnsembleBrain(weighting="uniform").fit(fz.transform(obs), lab)
     return brain, fz, obs
 
 

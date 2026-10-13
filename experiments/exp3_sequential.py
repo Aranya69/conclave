@@ -75,7 +75,9 @@ def train_conclave(seed: int = 0):
         tabular=TabularFeaturizer(),
     ).fit(obs)
     X = fz.transform(obs)
-    brain = EnsembleBrain().fit(X, lab)
+    # weighting pinned: this experiment's published numbers were produced with
+    # uniform averaging, before the library default became 'logloss' (see exp6).
+    brain = EnsembleBrain(weighting="uniform").fit(X, lab)
     gate = UncertaintyGate(epistemic_max=0.35, aleatoric_max=0.80,
                            confidence_min=0.25, margin_min=0.02,
                            allow_gather=False)

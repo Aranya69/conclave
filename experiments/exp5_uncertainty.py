@@ -70,7 +70,9 @@ def main() -> None:
     fz = FusedFeaturizer(
         text=BudgetedTextFeaturizer(n_word_features=2 ** 13, n_char_features=2 ** 13),
         tabular=TabularFeaturizer()).fit(tr_obs)
-    brain = EnsembleBrain().fit(fz.transform(tr_obs), tr_lab)
+    # weighting pinned: this experiment's published numbers were produced with
+    # uniform averaging, before the library default became 'logloss' (see exp6).
+    brain = EnsembleBrain(weighting="uniform").fit(fz.transform(tr_obs), tr_lab)
     Xte = fz.transform(te_obs)
     M = brain.member_proba(Xte)
     y = np.searchsorted(brain.classes_, te_lab)

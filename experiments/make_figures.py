@@ -45,8 +45,8 @@ def fig_availability():
     ax[0].axhline(0, color="k", lw=0.6, ls=":")
     ax[1].set_xlabel("steps with no connectivity (%)"); ax[1].set_ylabel("mean casualties")
     ax[0].legend(fontsize=6.6, loc="lower left", frameon=False)
-    fig.suptitle("Agent performance degrades with connectivity, unless the brain is local",
-                 fontsize=9.5, y=1.03)
+    ax[0].set_title("(a) Mean episode return", fontsize=9)
+    ax[1].set_title("(b) Mean casualties", fontsize=9)
     fig.savefig(FIG / "fig1_availability.pdf"); fig.savefig(FIG / "fig1_availability.png")
     plt.close(fig); print("fig1_availability")
 
@@ -71,8 +71,6 @@ def fig_frontier():
         ax.annotate(f"{k.split(' (')[0]} {pb[k]*100:.1f}",
                     (b[-1]["model_mb"] * 0.30, pb[k] * 100 + 0.18),
                     fontsize=6.2, color=col, ha="left")
-    ax.set_title("HumAID: accuracy vs footprint\n(dashed = baselines reported by dataset authors)",
-                 fontsize=8.5)
     ax.set_xscale("log"); ax.set_xlabel("serialised model size (MB, log scale)")
     ax.set_ylabel("weighted F1 (%)")
     ax.legend(fontsize=7, frameon=False, loc="upper left")
@@ -98,7 +96,7 @@ def fig_uncertainty():
         ax[0].set_xlabel("coverage: decisions acted on (%)")
         ax[0].set_ylabel("accuracy on acted-on decisions (%)")
         ax[0].legend(fontsize=7, frameon=False, loc="lower left")
-        ax[0].set_title("Selective prediction", fontsize=9)
+        ax[0].set_title("(a) Selective prediction", fontsize=9)
     ood = d.get("ood_detection", [])
     if ood:
         names = [f"{r['shift'].replace('sensor_','').replace('_',' ')}\n"
@@ -114,7 +112,7 @@ def fig_uncertainty():
         ax[1].set_xticks(range(len(ood))); ax[1].set_xticklabels(names, fontsize=5.6)
         ax[1].set_ylabel("accuracy (%)"); a2.set_ylabel("shift-detection AUROC")
         a2.set_ylim(0.4, 1.02)
-        ax[1].set_title("Uncertainty rises as accuracy falls", fontsize=9)
+        ax[1].set_title("(b) Detection of covariate shift", fontsize=9)
         h1, l1 = ax[1].get_legend_handles_labels(); h2, l2 = a2.get_legend_handles_labels()
         ax[1].legend(h1 + h2, l1 + l2, fontsize=6.6, frameon=False, loc="lower left")
     fig.savefig(FIG / "fig3_uncertainty.pdf"); fig.savefig(FIG / "fig3_uncertainty.png")
@@ -122,38 +120,106 @@ def fig_uncertainty():
 
 
 def fig_edge():
-    d = load("exp4_edge")
-    if not d: return
-    profs = [p for p in d["profiles"] if "measured" in p]
+    """(a) estimated decision latency on each board, scikit-learn agent vs
+    NumPy runtime; (b) peak RAM of every ML agent against board RAM."""
+    rt = load("exp8_edge_runtime")
+    ag = load("exp7_ml_agents")
+    if not rt or not ag:
+        return
     fig, ax = plt.subplots(1, 2, figsize=(7.4, 2.9))
-    names = [p["device"].replace(" (", "\n(") for p in profs]
-    mean = [p["estimated"]["est_mean_ms"] for p in profs]
-    p99 = [p["estimated"]["est_p99_ms"] for p in profs]
-    xs = np.arange(len(profs))
-    ax[0].bar(xs - 0.19, mean, 0.38, label="estimated mean", color="#1b6ca8")
-    ax[0].bar(xs + 0.19, p99, 0.38, label="estimated p99", color="#5dade2")
-    ax[0].set_xticks(xs); ax[0].set_xticklabels(names, fontsize=6)
-    ax[0].set_ylabel("latency per decision (ms)")
-    ax[0].set_title("Estimated on-device decision latency", fontsize=9)
-    ax[0].legend(fontsize=7, frameon=False)
-    ax[0].axhline(1000, color="#c0392b", ls="--", lw=1.0)
-    ax[0].annotate("1 s", (len(profs) - 0.6, 1050), fontsize=6.5, color="#c0392b")
+    keys = ["jetson_nano", "rpi4b_4gb", "rpi3bp", "rpi_zero2w"]
+    names = [rt["boards"][k]["device"].replace(" (4 GB)", "").replace("Raspberry ", "")
+             for k in keys]
+    full = [rt["boards"][k]["full_est_median_ms"] for k in keys]
+    edge = [rt["boards"][k]["runtime_est_median_ms"] for k in keys]
+    xs = np.arange(len(keys))
+    ax[0].bar(xs - 0.19, full, 0.38, label="scikit-learn agent", color="#9bb7d4")
+    ax[0].bar(xs + 0.19, edge, 0.38, label="NumPy edge runtime", color="#1b6ca8")
+    for i, (f, e) in enumerate(zip(full, edge)):
+        ax[0].annotate(f"{f:.1f}", (i - 0.19, f), textcoords="offset points",
+                       xytext=(0, 2), ha="center", fontsize=6)
+        ax[0].annotate(f"{e:.2f}", (i + 0.19, e), textcoords="offset points",
+                       xytext=(0, 2), ha="center", fontsize=6)
+    ax[0].set_xticks(xs); ax[0].set_xticklabels(names, fontsize=6.5)
+    ax[0].set_ylabel("estimated median latency (ms)")
+    ax[0].set_title("(a) Decision latency on low-cost boards", fontsize=9)
+    ax[0].legend(fontsize=6.8, frameon=False)
 
-    agent_mb = d["model_bytes"] / 1e6
-    labels = ["CONCLAVE agent"] + list(d["slm_reference"])
-    sizes = [agent_mb] + [v["weights_mb"] for v in d["slm_reference"].values()]
-    cols = ["#1b6ca8"] + ["#c0392b"] * len(d["slm_reference"])
-    ax[1].barh(range(len(sizes)), sizes, color=cols, height=0.6)
-    ax[1].set_yticks(range(len(sizes)))
-    ax[1].set_yticklabels([l.replace(" (", "\n(") for l in labels], fontsize=6.3)
-    ax[1].set_xscale("log"); ax[1].set_xlabel("stored parameters / model (MB, log)")
-    ax[1].set_title("Deployment footprint", fontsize=9)
-    for i, s in enumerate(sizes):
-        ax[1].annotate(f"{s:.2f} MB" if s < 10 else f"{s:.0f} MB",
-                       (s, i), textcoords="offset points", xytext=(4, -2.5), fontsize=6.3)
+    rows = [r for r in ag["flood"]["rows"] if "log-loss" not in r["agent"]]
+    lab = [r["agent"].replace(" (ours)", "").replace("Logistic regression", "Logistic reg.")
+           .replace("Hard-vote ensemble", "Hard-vote ens.") for r in rows]
+    ram = [r["peak_rss_mb"] for r in rows]
+    lab.append("CONCLAVE\n(edge runtime)"); ram.append(rt["runtime"]["peak_rss_mb"])
+    cols = ["#1b6ca8" if "CONCLAVE" in l else "#bdc3c7" for l in lab]
+    cols[-1] = "#0b3d63"
+    ax[1].barh(range(len(ram)), ram, color=cols, height=0.62)
+    ax[1].set_yticks(range(len(ram))); ax[1].set_yticklabels(lab, fontsize=6.2)
     ax[1].invert_yaxis()
+    ax[1].axvline(512, color="#c0392b", ls="--", lw=1.0)
+    ax[1].annotate("Pi Zero 2 W RAM\n(512 MB)", (512, len(ram) - 0.6), fontsize=6,
+                   color="#c0392b", ha="right", xytext=(-3, 0), textcoords="offset points")
+    for i, v in enumerate(ram):
+        ax[1].annotate(f"{v:.0f}", (v, i), textcoords="offset points", xytext=(3, -2.5),
+                       fontsize=6)
+    ax[1].set_xlim(0, 560)
+    ax[1].set_xlabel("peak RAM of a fresh process (MB)")
+    ax[1].set_title("(b) Memory needed on the device", fontsize=9)
     fig.savefig(FIG / "fig4_edge.pdf"); fig.savefig(FIG / "fig4_edge.png")
     plt.close(fig); print("fig4_edge")
+
+
+def fig_ml_agents():
+    """CONCLAVE against the other ML agents: no internet and cheap hardware."""
+    ag = load("exp7_ml_agents")
+    if not ag:
+        return
+    rows = [r for r in ag["flood"]["rows"] if "log-loss" not in r["agent"]]
+    ref = {r["policy"]: r for r in ag["flood"]["reference_agents_exp3"]
+           if r["outage_prob"] == 0.5}
+    ref0 = {r["policy"]: r for r in ag["flood"]["reference_agents_exp3"]
+            if r["outage_prob"] == 0.0}
+    fig, ax = plt.subplots(1, 2, figsize=(7.4, 3.1))
+    short = {"CBR (k-NN)": "CBR (k-NN)", "Decision tree": "Decision tree",
+             "Naive Bayes": "Naive Bayes", "Logistic regression": "Logistic reg.",
+             "MLP": "MLP", "Random forest": "Random forest", "LightGBM": "LightGBM",
+             "Hard-vote ensemble": "Hard-vote ens.", "CONCLAVE (ours)": "CONCLAVE (ours)"}
+    order = [r for r in rows if r["agent"] != "Naive Bayes"]   # off-scale (< -50)
+    names = ["Cloud agent"] + [short[r["agent"]] for r in order]
+    r0 = [ref0["cloud_oracle"]["mean_return"]] + [r["return_offline0"] for r in order]
+    r73 = [ref["cloud_oracle"]["mean_return"]] + [r["return_offline73"] for r in order]
+    xs = np.arange(len(names))
+    ax[0].bar(xs - 0.2, r0, 0.4, color="#9bb7d4", label="network up (0% offline)")
+    ax[0].bar(xs + 0.2, r73, 0.4, color="#1b6ca8", label="network down 73% of steps")
+    ax[0].axhline(0, color="k", lw=0.6)
+    ax[0].set_ylim(-45, 45)
+    ax[0].annotate(f"{r73[0]:.0f}\n(off scale)", (0.2, -45), textcoords="offset points",
+                   xytext=(14, 4), ha="left", fontsize=6, color="#0b3d63")
+    ax[0].set_xticks(xs)
+    ax[0].set_xticklabels(names, fontsize=6.2, rotation=35, ha="right")
+    ax[0].set_ylabel("mean episode return")
+    ax[0].set_title("(a) Closed-loop return without internet", fontsize=9)
+    ax[0].legend(fontsize=6.4, frameon=False, loc="lower right")
+
+    for r in rows:
+        if r["agent"] == "Naive Bayes":
+            continue
+        c = "#1b6ca8" if "CONCLAVE" in r["agent"] else "#7f8c8d"
+        size = 18 + 60 * np.log10(1 + r["size_kb"] / 100)
+        ax[1].scatter(r["est_ms_pi_zero2w"], r["return_offline73"], s=size, color=c,
+                      alpha=0.85, edgecolor="k", lw=0.4, zorder=3)
+        off = {"Decision tree": (0, 7), "LightGBM": (6, -2), "MLP": (7, -6),
+               "Logistic regression": (6, 2)}.get(r["agent"], (5, 3))
+        ax[1].annotate(r["agent"].replace(" (ours)", ""), (r["est_ms_pi_zero2w"],
+                       r["return_offline73"]), textcoords="offset points",
+                       xytext=off, fontsize=6,
+                       ha="center" if r["agent"] == "Decision tree" else "left")
+    ax[1].set_xscale("log")
+    ax[1].set_xlabel("estimated latency on Raspberry Pi Zero 2 W (ms, log)")
+    ax[1].set_ylabel("return with 73% of steps offline")
+    ax[1].set_title("(b) Quality against cost on a low-cost board", fontsize=9)
+    ax[1].margins(x=0.25, y=0.15)
+    fig.savefig(FIG / "fig6_ml_agents.pdf"); fig.savefig(FIG / "fig6_ml_agents.png")
+    plt.close(fig); print("fig6_ml_agents")
 
 
 def fig_routing():
@@ -173,7 +239,6 @@ def fig_routing():
                     ha="center", fontsize=6.2)
     ax.set_xticks(xs); ax.set_xticklabels(names, fontsize=6, rotation=12)
     ax.set_ylabel("top-1 tool selection accuracy (%)"); ax.set_ylim(0, 108)
-    ax.set_title("Tool routing on BFCL v3 without a language model", fontsize=9)
     ax.legend(fontsize=7, frameon=False, loc="lower right")
     fig.savefig(FIG / "fig5_routing.pdf"); fig.savefig(FIG / "fig5_routing.png")
     plt.close(fig); print("fig5_routing")
@@ -181,4 +246,5 @@ def fig_routing():
 
 if __name__ == "__main__":
     fig_availability(); fig_frontier(); fig_uncertainty(); fig_edge(); fig_routing()
+    fig_ml_agents()
     print(f"\nfigures -> {FIG}")
