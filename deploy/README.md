@@ -10,6 +10,7 @@ fit?** You do not need the hardware to answer it.
 | `Dockerfile.pi4` | A genuine `linux/arm64` image — real ARM wheels, real ARM BLAS |
 | `docker-compose.pi4.yml` | Three boards (Pi 4 / Pi 3B+ / Pi Zero 2 W) with enforced RAM and CPU limits |
 | `pi_check.py` | Trains an agent, exercises it, and labels each result valid or not |
+| `edge_agent_flood.npz` | A trained flood agent exported for the NumPy-only runtime (113 KB) |
 
 ## Without a Raspberry Pi
 
@@ -91,3 +92,31 @@ about 60 MB of wheels plus a 200 KB agent.
 > moment you start pushing model updates to field devices.
 
 See `docs/CONCLAVE_Guide.pdf` §5 for the full treatment.
+
+
+## The NumPy-only runtime (smallest deployment)
+
+Training needs scikit-learn; deciding does not. `conclave/edge/runtime.py` is a
+single file that imports only NumPy and the standard library, and reproduces the
+scikit-learn agent's decisions exactly (Experiment 8: 2,400 / 2,400 identical
+actions, peak RAM 32 MB instead of 185 MB, 0.19 ms instead of 2.7 ms per
+decision on the host).
+
+Export on the training machine:
+
+```python
+from conclave.edge.runtime import export_agent
+export_agent("my_agent.npz", featurizer, brain, gate)   # linear committee only
+```
+
+Copy two files to the board -- `conclave/edge/runtime.py` and `my_agent.npz` --
+and install NumPy only (`pip install numpy`). Then:
+
+```python
+from runtime import EdgeAgent
+agent = EdgeAgent("my_agent.npz")
+d = agent.decide({"river_level": 4.8, "rainfall": 9.1}, "water rising near the school")
+print(d["action"], d["gate"], d["stats"]["epistemic"])
+```
+
+`edge_agent_flood.npz` in this folder is a ready-made example.
