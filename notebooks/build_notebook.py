@@ -560,12 +560,18 @@ print(f"({N_COMPARE_EPISODES} episodes per point, {time.time() - t0:.0f}s)")
 """)
 md(r"""
 ### 4.2 Comparison with other machine-learning-based agents
-All agents below run offline on the same CPU and are trained on the same decisions and features; only the decision core differs. They are tested with the network down for about 73% of the steps (no internet) and on cost (latency, model size, estimated latency on a Raspberry Pi Zero 2 W). The same 120 episode seeds as the paper are used, so the returns reproduce the "73% offline" column of Table IX. Latency is measured separately, one decision at a time, as an agent on a board would run.
+All agents below run offline on the same CPU and are trained on the same decisions and features; only the decision core differs. They are tested with the network down for about 73% of the steps (no internet) and on cost (latency, model size, estimated latency on a Raspberry Pi Zero 2 W). The same 120 episode seeds as the paper are used, so the returns reproduce the "73% offline" column of Table IX. Latency is measured separately, one decision at a time, as an agent on a board would run. Colab's shared CPU is slower and less steady than the reference machine of the paper, so the board estimate first converts the latency measured here to the reference machine with a short CPU benchmark (the same one used in the paper) and then scales it to the board.
 """)
 code(r"""
 import io, joblib
 from experiments.exp7_ml_agents import flood_agents
-from conclave.edge.profile import PROFILES
+from conclave.edge.profile import PROFILES, cpu_calibration_score
+REF_SCORE = json.load(open("results/exp4_edge.json"))["host_calibration_score"]   # the paper's reference machine
+SPEED = cpu_calibration_score(0.5) / REF_SCORE
+def on_board(ms, key="rpi_zero2w"):
+    # latency measured here -> reference machine -> estimated latency on the board
+    return ms * SPEED / PROFILES[key].scalar_score
+print(f"this machine runs the calibration benchmark at {SPEED:.2f}x the speed of the paper's reference machine")
 tr_obs7, tr_lab7 = collect(N_TRAIN_EPISODES, seed0=1000)
 Xtr7, Xte7 = fz_c.transform(tr_obs7), fz_c.transform(te_obs)
 agents = {k: v for k, v in flood_agents().items() if "log-loss" not in k}
@@ -587,7 +593,7 @@ for name, b in agents.items():
                  "return, 73% offline": round(r["mean_return"], 1),
                  "casualties": round(r["mean_casualties"], 1),
                  "latency (ms)": round(ms, 2),
-                 "est. Pi Zero 2 W (ms)": round(ms / PROFILES["rpi_zero2w"].scalar_score, 1),
+                 "est. Pi Zero 2 W (ms)": round(on_board(ms), 1),
                  "model (KB)": round(buf.tell() / 1e3)})
     print(f"  {name:<22s} done in {time.time() - t0:5.1f}s")
 cmp = pd.DataFrame(rows).set_index("agent").sort_values("return, 73% offline", ascending=False)
@@ -667,11 +673,12 @@ print([l for l in open("/proc/self/status") if l.startswith("VmHWM")][0].split()
 kb, sk, sp = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True).stdout.split()
 print(f"peak RAM of the runtime process: {int(kb) / 1024:.1f} MB (scikit-learn loaded: {sk}, SciPy loaded: {sp})")
 boards = pd.DataFrame([{"board": p.name, "RAM (MB)": p.ram_mb or "-",
-                        "est. latency, runtime (ms)": round(t_edge / p.scalar_score, 2),
-                        "est. latency, scikit-learn (ms)": round(t_full / p.scalar_score, 1)}
+                        "est. latency, runtime (ms)": round(on_board(t_edge, k), 2),
+                        "est. latency, scikit-learn (ms)": round(on_board(t_full, k), 1)}
                        for k, p in PROFILES.items() if k != "host"]).set_index("board")
 display(boards)
-print("Board latencies are estimated by scaling this machine's latency with each board's relative single-core speed.")
+print("Board latencies: this machine's latency, converted to the paper's reference machine with the CPU benchmark "
+      "and scaled by each board's relative single-core speed (estimates, not measurements on boards).")
 """)
 
 # =====================================================================  summary
