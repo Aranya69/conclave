@@ -513,18 +513,38 @@ The two conditions that matter in the field are tested here: **no internet** and
 """)
 md(r"""
 ### 4.1 Without internet: CONCLAVE vs a cloud-dependent agent
-The cloud agent follows the **expert** policy itself (it sees the hidden risk), so it is the upper bound of a remote LLM-based agent. It cannot act while the network is down; a cache variant repeats its last action. CONCLAVE was trained by behaviour cloning on the same expert, so any advantage comes from availability alone.
+The cloud agent follows the **expert** policy itself (it sees the hidden risk), so it is the upper bound of a remote LLM-based agent. It cannot act while the network is down; a cache variant repeats its last action. CONCLAVE was trained by behaviour cloning on the same expert, so any advantage comes from availability alone. The 120 episode seeds of the paper are used, so the table reproduces Table VII.
+
+To keep this fast, the episodes are run side by side: at every time step the agent decides for all 120 episodes in one call. This gives exactly the same decisions as running the episodes one after another, because every decision depends only on its own observation.
 """)
 code(r"""
+def closed_loop(brain, fz, outage_prob, n_episodes, seed0=7000, horizon=40):
+    # Run n_episodes flood episodes side by side; the same seeds and decisions as run_policy.
+    envs = [FloodResponseEnv(DisasterConfig(seed=seed0 + e, horizon=horizon, outage_prob=outage_prob))
+            for e in range(n_episodes)]
+    obs_ = [env.reset() for env in envs]
+    totals = np.zeros(n_episodes)
+    for _ in range(horizon):
+        acts = brain.classes_[brain.predict_proba(fz.transform(obs_)).argmax(axis=1)]
+        for i, env in enumerate(envs):
+            obs_[i], r, done, _ = env.step(Action(kind=ActionKind.TOOL, tool=str(acts[i])))
+            totals[i] += r
+    return {"mean_return": float(totals.mean()), "returns": totals,
+            "mean_casualties": float(np.mean([env.casualties for env in envs])),
+            "measured_offline_fraction": float(np.mean([env.offline_steps / env.t for env in envs]))}
+
 t0 = time.time()
 brain_c, fz_c, _ = train_conclave()              # the exact agent of the paper (160 episodes)
-grid = [0.0, 0.1, 0.3, 0.5]
+grid = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 names = {"conclave": "CONCLAVE (local)", "cloud_oracle": "cloud agent", "cloud_oracle_cache": "cloud agent + cache",
          "static_rules": "static threshold rules"}
 res = []
 for q in grid:
     for pol in names:
-        r = run_policy(pol, q, N_EVAL_EPISODES, brain_c, fz_c, None)
+        if pol == "conclave":
+            r = closed_loop(brain_c, fz_c, q, N_COMPARE_EPISODES)
+        else:
+            r = run_policy(pol, q, N_COMPARE_EPISODES, brain_c, fz_c, None)
         res.append({"policy": names[pol], "offline (%)": round(100 * r["measured_offline_fraction"], 1),
                     "return": round(r["mean_return"], 1), "casualties": round(r["mean_casualties"], 1)})
 res = pd.DataFrame(res)
@@ -536,11 +556,11 @@ for pol, g in res.groupby("policy"):
 ax[0].set_xlabel("steps with no connectivity (%)"); ax[0].set_ylabel("mean return"); ax[0].legend()
 ax[1].set_xlabel("steps with no connectivity (%)"); ax[1].set_ylabel("mean casualties")
 plt.tight_layout(); plt.show()
-print(f"({N_EVAL_EPISODES} episodes per point, {time.time() - t0:.0f}s; the paper uses 120)")
+print(f"({N_COMPARE_EPISODES} episodes per point, {time.time() - t0:.0f}s)")
 """)
 md(r"""
 ### 4.2 Comparison with other machine-learning-based agents
-All agents below run offline on the same CPU and are trained on the same decisions and features; only the decision core differs. They are tested with the network down for about 73% of the steps (no internet) and on cost (latency, model size, estimated latency on a Raspberry Pi Zero 2 W). The same 120 episode seeds as the paper are used, so the returns reproduce the "73% offline" column of Table IX. This cell takes about five minutes, because the case-based ($k$-NN) and hard-vote agents are slow.
+All agents below run offline on the same CPU and are trained on the same decisions and features; only the decision core differs. They are tested with the network down for about 73% of the steps (no internet) and on cost (latency, model size, estimated latency on a Raspberry Pi Zero 2 W). The same 120 episode seeds as the paper are used, so the returns reproduce the "73% offline" column of Table IX. Latency is measured separately, one decision at a time, as an agent on a board would run.
 """)
 code(r"""
 import io, joblib
@@ -557,13 +577,17 @@ for name, b in agents.items():
     t0 = time.time()
     if name != "CONCLAVE (ours)":
         b.fit(Xtr7, tr_lab7)
-    r = run_policy("conclave", 0.5, N_COMPARE_EPISODES, b, fz_c, None)
+    r = closed_loop(b, fz_c, 0.5, N_COMPARE_EPISODES)
+    lat = []
+    for o in te_obs[:150]:                                   # single decisions, as on a board
+        t1 = time.perf_counter(); b.predict_proba(fz_c.transform([o])); lat.append(1e3 * (time.perf_counter() - t1))
+    ms = float(np.median(lat))
     buf = io.BytesIO(); joblib.dump({"fz": fz_c, "brain": b}, buf, compress=3)
     rows.append({"agent": name, "one-step acc (%)": round(100 * (b.predict(Xte7) == te_lab).mean(), 1),
                  "return, 73% offline": round(r["mean_return"], 1),
                  "casualties": round(r["mean_casualties"], 1),
-                 "latency (ms)": round(r["median_decision_ms"], 2),
-                 "est. Pi Zero 2 W (ms)": round(r["median_decision_ms"] / PROFILES["rpi_zero2w"].scalar_score, 1),
+                 "latency (ms)": round(ms, 2),
+                 "est. Pi Zero 2 W (ms)": round(ms / PROFILES["rpi_zero2w"].scalar_score, 1),
                  "model (KB)": round(buf.tell() / 1e3)})
     print(f"  {name:<22s} done in {time.time() - t0:5.1f}s")
 cmp = pd.DataFrame(rows).set_index("agent").sort_values("return, 73% offline", ascending=False)
