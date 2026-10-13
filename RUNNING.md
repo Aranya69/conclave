@@ -47,13 +47,15 @@ Nothing exotic — `numpy`, `scipy`, `scikit-learn`, `joblib`, `psutil`, plus
 pytest -q
 ```
 
-Expect **14 passed** in about six seconds. Two groups:
+Expect **19 passed** in about twenty seconds. Three groups:
 
 - `tests/test_smoke.py` — the framework itself: uncertainty maths, the planner,
   tool registry, memory, a full agent episode.
 - `tests/test_paper_claims.py` — every number quoted in the paper, checked
   against `results/*.json`. If you re-run an experiment and a number moves,
   these fail on purpose.
+- `tests/test_edge_runtime.py` — the NumPy-only edge runtime reproduces the
+  scikit-learn agent exactly.
 
 VS Code's Testing panel (the flask icon in the sidebar — yes, really) picks
 these up automatically and lets you run them individually.
@@ -129,6 +131,9 @@ python experiments/exp5_uncertainty.py   # ~4 min, no data needed
 python experiments/exp4_edge.py          # ~1 min, no data needed
 python experiments/exp1_tool_routing.py  # ~2 min, needs data/bfcl
 python experiments/exp2_humaid.py 12 14  # ~4 min, needs data/humaid
+python experiments/exp6_ablation.py --fresh   # ~6 min, single models vs committees
+python experiments/exp7_ml_agents.py     # ~25 min, CONCLAVE vs 8 other ML agents
+python experiments/exp8_edge_runtime.py  # ~3 min, NumPy-only runtime vs scikit-learn
 python experiments/make_figures.py       # regenerates paper/figures/
 ```
 

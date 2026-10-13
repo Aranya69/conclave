@@ -16,9 +16,11 @@
 [![arch](https://img.shields.io/badge/arch-x86__64%20|%20aarch64-16a085.svg)](deploy/README.md)
 [![agent size](https://img.shields.io/badge/agent-232%20KB-16a085.svg)](#resource-cost)
 [![no LLM](https://img.shields.io/badge/LLM-none-c0392b.svg)](#why-this-exists)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Aranya69/conclave/blob/main/notebooks/CONCLAVE_Colab_Demo.ipynb)
 
 <br>
 
+[**Colab notebook**](https://colab.research.google.com/github/Aranya69/conclave/blob/main/notebooks/CONCLAVE_Colab_Demo.ipynb) &nbsp;·&nbsp;
 [**Quickstart**](#quickstart) &nbsp;·&nbsp;
 [**Deploy to IoT**](#deploy-to-your-own-iot-device) &nbsp;·&nbsp;
 [**Guide (PDF)**](docs/CONCLAVE_Guide.pdf) &nbsp;·&nbsp;
@@ -96,7 +98,7 @@ constant you can measure and certify.**
 ```bash
 git clone https://github.com/Aranya69/conclave && cd conclave
 pip install -e ".[boost]"
-pytest -q                      # 14 passed, ~6 s
+pytest -q                      # 19 passed, ~20 s
 ```
 
 Then watch it work:
@@ -309,6 +311,30 @@ gap opens.
 *Core counts and RAM ceilings are enforced; on-device latency is a stated scaling
 model, not a measurement — see [Limitations](#what-does-not-work).*
 
+**NumPy-only edge runtime.** `conclave/edge/runtime.py` runs an exported agent
+with NumPy alone and reproduces every decision exactly (2,400 / 2,400): peak RAM
+32 MB instead of 185 MB, 0.19 ms instead of 2.7 ms per decision on the host,
+about 1.7 ms estimated on a Pi Zero 2 W. See [deploy/README.md](deploy/README.md).
+
+### Against other machine-learning agents
+
+Same training data, features and CPU; network down for 73 % of steps; 120 episodes.
+
+| Agent | One-step acc. | Return | Casualties | Latency |
+|:--|--:|--:|--:|--:|
+| **CONCLAVE** | 96.3 % | **33.5** | **50.0** | 2.45 ms |
+| Decision tree | 98.7 % | 31.6 | 62.7 | 1.03 ms |
+| LightGBM | 98.6 % | 31.4 | 64.7 | 1.40 ms |
+| Logistic regression | 98.4 % | 29.7 | 68.7 | 1.09 ms |
+| MLP | 97.0 % | 29.0 | 67.6 | 1.04 ms |
+| Hard-vote ensemble (MLP + RF + k-NN) | 96.5 % | 24.5 | 72.5 | 15.37 ms |
+| Random forest | 91.5 % | 21.9 | 69.3 | 4.30 ms |
+| Case-based reasoning (k-NN) | 93.9 % | 16.3 | 81.8 | 11.84 ms |
+
+Single models imitate the expert slightly better one decision at a time, but the
+committee's less-correlated errors compound less over an episode
+(`experiments/exp7_ml_agents.py`).
+
 ---
 
 ## What does *not* work
@@ -324,8 +350,9 @@ Reported because negative results are results.
   problem, *when* a decision matters is as important as how uncertain it is.
 - **Text features are lexical.** Hashed n-grams have no compositional semantics,
   so paraphrase and negation hurt more than they hurt a transformer.
-- **Peak RSS is ~200 MB**, dominated by the Python runtime — the *agent* is
-  232 KB. Microcontroller-class deployment needs a reimplementation.
+- **With scikit-learn, peak RSS is ~185 MB**, dominated by the libraries — the
+  *agent* is 232 KB. The NumPy-only runtime brings this to 32 MB; a
+  microcontroller-class deployment would still need a C reimplementation.
 - **On-device latency is a scaling model, not a measurement.** No Raspberry Pi
   was used in this work. If you have one,
   [please file a hardware report](.github/ISSUE_TEMPLATE/hardware_report.md) —
@@ -367,10 +394,11 @@ conclave/
 
 deploy/           Dockerfile + compose for emulated ARM64, pi_check.py
 examples/         a complete agent in one file
-experiments/      exp1–exp5 + figure generation
+experiments/      exp1–exp8 + figure generation
+notebooks/        Colab walkthrough: dataset EDA, working process, agent demo
 docs/             the practical guide (LaTeX source + PDF)
 paper/            the research paper
-tests/            14 tests, incl. paper-claim verification
+tests/            19 tests, incl. paper-claim verification
 ```
 
 ## Data

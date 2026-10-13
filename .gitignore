@@ -54,3 +54,4 @@ _trash_delete_me/
 
 # personal one-off helper, not part of the project
 push_to_github.ps1
+PUSH_TO_GITHUB.bat
