@@ -104,9 +104,25 @@ class EnsembleBrain(BaseEstimator, ClassifierMixin):
         ``predict_proba`` after fitting (or ``decision_function``, which
         is softmax-normalised).
     weighting:
-        ``"uniform"``  -- plain average, the most robust default.
+        ``"logloss"``  -- weight by inverse out-of-fold log loss. **Default.**
         ``"accuracy"`` -- weight members by out-of-fold accuracy.
-        ``"logloss"``  -- weight by inverse out-of-fold log loss.
+        ``"uniform"``  -- plain average.
+
+        The default is *not* uniform, and the reason is measured rather than
+        theoretical. Uniform averaging assumes members are of comparable
+        quality. When one is not -- naive Bayes on a task the linear members
+        handle easily -- a uniform average drags the committee *below its own
+        best member*: 95.0% against that member's 98.3% in our ablation
+        (Experiment 6). Out-of-fold weighting detects the weak member and
+        assigns it approximately zero weight, recovering 98.0%.
+
+        Use ``"uniform"`` only when you have checked that members perform
+        comparably -- or when the brain drives a closed control loop.  In the
+        flood-response task (Experiment 7) uniform voting gave a significantly
+        higher episode return than log-loss weighting (36.5 vs 33.5), although
+        log-loss weighting is more accurate one decision at a time (98.0 vs
+        96.3 %): the down-weighted member still decorrelates the committee's
+        errors, and in a sequential task errors compound.
     gate:
         Uncertainty gate used by :meth:`decide`.  If ``None`` a default
         gate is constructed.
@@ -115,7 +131,7 @@ class EnsembleBrain(BaseEstimator, ClassifierMixin):
     def __init__(
         self,
         members: Optional[Mapping[str, BaseEstimator]] = None,
-        weighting: str = "uniform",
+        weighting: str = "logloss",
         gate: Optional[UncertaintyGate] = None,
         cv: int = 3,
         random_state: int = 0,
