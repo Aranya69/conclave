@@ -26,6 +26,9 @@ STEPS = {
     "exp3": ("experiments/exp3_sequential.py", [], 4),
     "exp4": ("experiments/exp4_edge.py", [], 1),
     "exp5": ("experiments/exp5_uncertainty.py", [], 5),
+    "exp6": ("experiments/exp6_ablation.py", ["--fresh"], 6),
+    "exp7": ("experiments/exp7_ml_agents.py", [], 25),
+    "exp8": ("experiments/exp8_edge_runtime.py", [], 3),
     "figures": ("experiments/make_figures.py", [], 1),
     "docx": ("scripts/make_docx.py", [], 1),
 }
