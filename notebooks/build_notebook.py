@@ -118,7 +118,8 @@ print(f"python {sys.version.split()[0]} | numpy {np.__version__} | scikit-learn 
 md(r"""
 ## 1. Exploratory data analysis
 Four test beds are used in the paper. Two are public datasets (**HumAID** and **BFCL v3**), and two were built for the study (the **flood-response simulator** and the **edge hardware profiles**). This part examines the three that contain data.
-
+""")
+md(r"""
 ### 1.1 HumAID — crisis tweets
 HumAID contains tweets posted during real disasters, each labelled with one of ten humanitarian categories. The agent must sort every incoming message into its category (triage). We keep the authors' official train/validation/test split.
 """)
@@ -433,6 +434,9 @@ print(f"median decision time: {episode.ms.median():.2f} ms")
 # =====================================================================  routing + triage
 md(r"""
 ## 3. Tool routing and crisis triage
+The agent's two perception tasks on public data: choosing a tool for a request, and sorting crisis messages.
+""")
+md(r"""
 ### 3.1 Tool routing on BFCL v3 (no language model)
 Instead of asking an LLM to name a tool, CONCLAVE scores every (request, tool) pair with a ranking committee (LightGBM + random forest + logistic regression) over 11 pairwise features, and picks the highest score. Because it scores *pairs*, a tool registered after training can be chosen without retraining.
 """)
@@ -505,6 +509,9 @@ if g.calibration_["achieved"]:
 # =====================================================================  experiments
 md(r"""
 ## 4. Experiments
+The two conditions that matter in the field are tested here: **no internet** and **low-cost hardware**.
+""")
+md(r"""
 ### 4.1 Without internet: CONCLAVE vs a cloud-dependent agent
 The cloud agent follows the **expert** policy itself (it sees the hidden risk), so it is the upper bound of a remote LLM-based agent. It cannot act while the network is down; a cache variant repeats its last action. CONCLAVE was trained by behaviour cloning on the same expert, so any advantage comes from availability alone.
 """)
