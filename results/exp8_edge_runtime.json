@@ -1,0 +1,119 @@
+{
+  "exp7_agent": {
+    "closed_loop": {
+      "0.0": {
+        "mean_return": 36.468728629006726,
+        "mean_casualties": 41.94172681039049
+      },
+      "0.5": {
+        "mean_return": 33.53942378493642,
+        "mean_casualties": 49.99594609714704
+      }
+    },
+    "npz_kb": 127.614,
+    "action_agreement": 1.0,
+    "n": 2400,
+    "runtime": {
+      "median_ms": 0.185853500624944,
+      "p99_ms": 0.30884799980412936,
+      "peak_rss_mb": 31.4375,
+      "sklearn_loaded": false,
+      "scipy_loaded": false
+    },
+    "est_ms_pi_zero2w": 1.6895772784085816
+  },
+  "export": {
+    "path": "deploy/edge_agent_flood.npz",
+    "npz_kb": 113.181,
+    "columns_kept": 2486,
+    "columns_total": 16396
+  },
+  "equivalence": {
+    "n": 2400,
+    "action_agreement": 1.0,
+    "gate_agreement": 1.0,
+    "max_abs_posterior_diff": 7.782663402622347e-14,
+    "max_abs_epistemic_diff": 8.593126210598712e-14,
+    "max_abs_confidence_diff": 7.72715225139109e-14
+  },
+  "full_stack": {
+    "median_ms": 2.7213970001866983,
+    "p99_ms": 4.181514000265452,
+    "peak_rss_mb": 185.734375
+  },
+  "full_stack_512mb_cap": {
+    "median_ms": 3.8928100002522115,
+    "p99_ms": 5.031751000387885,
+    "peak_rss_mb": 185.36328125
+  },
+  "runtime": {
+    "median_ms": 0.18803249986376613,
+    "p99_ms": 0.29551199986599386,
+    "peak_rss_mb": 32.24609375,
+    "sklearn_loaded": false,
+    "scipy_loaded": false
+  },
+  "runtime_512mb_cap": {
+    "median_ms": 0.19007099990631104,
+    "p99_ms": 0.24658900019858265,
+    "peak_rss_mb": 32.30859375,
+    "sklearn_loaded": false,
+    "scipy_loaded": false
+  },
+  "runtime_256mb_cap": {
+    "median_ms": 0.18688549971557222,
+    "p99_ms": 0.2632710002217209,
+    "peak_rss_mb": 32.25390625,
+    "sklearn_loaded": false,
+    "scipy_loaded": false
+  },
+  "boards": {
+    "jetson_nano": {
+      "device": "Jetson Nano (4 GB)",
+      "ram_mb": 4096,
+      "runtime_est_median_ms": 0.7232019225529467,
+      "runtime_est_p99_ms": 1.1365846148692071,
+      "full_est_median_ms": 10.466911539179609,
+      "runtime_fits": true,
+      "full_fits": true
+    },
+    "rpi4b_4gb": {
+      "device": "Raspberry Pi 4B (4 GB)",
+      "ram_mb": 4096,
+      "runtime_est_median_ms": 0.6715446423705933,
+      "runtime_est_p99_ms": 1.0553999995214065,
+      "full_est_median_ms": 9.719275000666778,
+      "runtime_fits": true,
+      "full_fits": true
+    },
+    "rpi3bp": {
+      "device": "Raspberry Pi 3B+",
+      "ram_mb": 1024,
+      "runtime_est_median_ms": 1.1060735286103889,
+      "runtime_est_p99_ms": 1.7383058815646697,
+      "full_est_median_ms": 16.008217648157046,
+      "runtime_fits": true,
+      "full_fits": true
+    },
+    "rpi_zero2w": {
+      "device": "Raspberry Pi Zero 2 W",
+      "ram_mb": 512,
+      "runtime_est_median_ms": 1.709386362397874,
+      "runtime_est_p99_ms": 2.6864727260544896,
+      "full_est_median_ms": 24.739972728969985,
+      "runtime_fits": true,
+      "full_fits": true
+    }
+  },
+  "note": "Peak RSS is VmHWM (peak resident set of the process's own address space) of a fresh process that loads the agent and makes 600 decisions; ru_maxrss is not used because Linux carries it over from the parent across fork/exec. Caps are RLIMIT_AS limits set before NumPy is imported. Board latencies are estimates, as in Experiment 4.",
+  "_meta": {
+    "timestamp": "2026-10-03T17:28:01",
+    "git": "5fe5422",
+    "seed": 42,
+    "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
+    "machine": "x86_64",
+    "python": "3.10.12",
+    "logical_cores": 2,
+    "ram_gb": 3.82
+  }
+}

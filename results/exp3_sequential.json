@@ -8,7 +8,7 @@
       "mean_casualties": 41.94172681039049,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 2.4416920005023712,
+      "median_decision_ms": 2.535317999900144,
       "measured_offline_fraction": 0.0,
       "n_episodes": 120
     },
@@ -20,7 +20,7 @@
       "mean_casualties": 53.727363362252845,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.0017340007616439834,
+      "median_decision_ms": 0.0016229998891503783,
       "measured_offline_fraction": 0.0,
       "n_episodes": 120
     },
@@ -32,7 +32,7 @@
       "mean_casualties": 53.727363362252845,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.0017340007616439834,
+      "median_decision_ms": 0.001633000010770047,
       "measured_offline_fraction": 0.0,
       "n_episodes": 120
     },
@@ -44,7 +44,7 @@
       "mean_casualties": 70.88629874968956,
       "mean_false_alarms": 0.575,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.0015829991752980277,
+      "median_decision_ms": 0.0014720001217938261,
       "measured_offline_fraction": 0.0,
       "n_episodes": 120
     },
@@ -56,7 +56,7 @@
       "mean_casualties": 75.96402111700561,
       "mean_false_alarms": 2.783333333333333,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.008676999641465954,
+      "median_decision_ms": 0.008796999964033603,
       "measured_offline_fraction": 0.0,
       "n_episodes": 120
     },
@@ -68,7 +68,7 @@
       "mean_casualties": 48.60227766458128,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 2.440064000438724,
+      "median_decision_ms": 2.5273375000551823,
       "measured_offline_fraction": 0.3529166666666666,
       "n_episodes": 120
     },
@@ -80,7 +80,7 @@
       "mean_casualties": 160.14205509072204,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 14.116666666666667,
-      "median_decision_ms": 0.0016329995560226962,
+      "median_decision_ms": 0.0015330001588154119,
       "measured_offline_fraction": 0.3529166666666666,
       "n_episodes": 120
     },
@@ -92,7 +92,7 @@
       "mean_casualties": 123.64866139217564,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 14.116666666666667,
-      "median_decision_ms": 0.0016129997675307095,
+      "median_decision_ms": 0.0015429998256877298,
       "measured_offline_fraction": 0.3529166666666666,
       "n_episodes": 120
     },
@@ -104,7 +104,7 @@
       "mean_casualties": 71.90544908035629,
       "mean_false_alarms": 0.5166666666666667,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.0015730001905467361,
+      "median_decision_ms": 0.0015120000398383127,
       "measured_offline_fraction": 0.3529166666666666,
       "n_episodes": 120
     },
@@ -116,7 +116,7 @@
       "mean_casualties": 79.57105903350698,
       "mean_false_alarms": 2.7416666666666667,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.008637000064481981,
+      "median_decision_ms": 0.008797000191407278,
       "measured_offline_fraction": 0.3529166666666666,
       "n_episodes": 120
     },
@@ -128,7 +128,7 @@
       "mean_casualties": 46.56415150688012,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 2.439603000311763,
+      "median_decision_ms": 2.4874069998759296,
       "measured_offline_fraction": 0.5299999999999999,
       "n_episodes": 120
     },
@@ -140,7 +140,7 @@
       "mean_casualties": 217.45877227081388,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 21.2,
-      "median_decision_ms": 0.001513000825070776,
+      "median_decision_ms": 0.001421999968442833,
       "measured_offline_fraction": 0.5299999999999999,
       "n_episodes": 120
     },
@@ -152,7 +152,7 @@
       "mean_casualties": 156.59755066519077,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 21.2,
-      "median_decision_ms": 0.0015129990060813725,
+      "median_decision_ms": 0.001417500016032136,
       "measured_offline_fraction": 0.5299999999999999,
       "n_episodes": 120
     },
@@ -164,7 +164,7 @@
       "mean_casualties": 71.27423869184162,
       "mean_false_alarms": 0.625,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.0015530004020547494,
+      "median_decision_ms": 0.0014919999102858128,
       "measured_offline_fraction": 0.5299999999999999,
       "n_episodes": 120
     },
@@ -176,7 +176,7 @@
       "mean_casualties": 76.91943987280173,
       "mean_false_alarms": 2.7666666666666666,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.008737000825931318,
+      "median_decision_ms": 0.008781500014265475,
       "measured_offline_fraction": 0.5299999999999999,
       "n_episodes": 120
     },
@@ -188,7 +188,7 @@
       "mean_casualties": 46.218125601527134,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 2.4339030005648965,
+      "median_decision_ms": 2.5349169999344667,
       "measured_offline_fraction": 0.623125,
       "n_episodes": 120
     },
@@ -200,7 +200,7 @@
       "mean_casualties": 243.49232081601312,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 24.925,
-      "median_decision_ms": 0.001413000063621439,
+      "median_decision_ms": 0.001291999979002867,
       "measured_offline_fraction": 0.623125,
       "n_episodes": 120
     },
@@ -212,7 +212,7 @@
       "mean_casualties": 177.28128062615033,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 24.925,
-      "median_decision_ms": 0.0013820008462062106,
+      "median_decision_ms": 0.001291999979002867,
       "measured_offline_fraction": 0.623125,
       "n_episodes": 120
     },
@@ -224,7 +224,7 @@
       "mean_casualties": 71.67978389595639,
       "mean_false_alarms": 0.6666666666666666,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.0015630012057954445,
+      "median_decision_ms": 0.0015020000319054816,
       "measured_offline_fraction": 0.623125,
       "n_episodes": 120
     },
@@ -236,7 +236,7 @@
       "mean_casualties": 80.25397163517411,
       "mean_false_alarms": 2.7666666666666666,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.008617000275989994,
+      "median_decision_ms": 0.00877699994816794,
       "measured_offline_fraction": 0.623125,
       "n_episodes": 120
     },
@@ -248,7 +248,7 @@
       "mean_casualties": 44.66394328615011,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 2.4390870003117016,
+      "median_decision_ms": 2.4830579999388647,
       "measured_offline_fraction": 0.6864583333333333,
       "n_episodes": 120
     },
@@ -260,7 +260,7 @@
       "mean_casualties": 258.5207598980793,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 27.458333333333332,
-      "median_decision_ms": 0.0013629996828967705,
+      "median_decision_ms": 0.0012519999472715426,
       "measured_offline_fraction": 0.6864583333333333,
       "n_episodes": 120
     },
@@ -272,7 +272,7 @@
       "mean_casualties": 188.8566468832992,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 27.458333333333332,
-      "median_decision_ms": 0.0013420012692222372,
+      "median_decision_ms": 0.0012519999472715426,
       "measured_offline_fraction": 0.6864583333333333,
       "n_episodes": 120
     },
@@ -284,7 +284,7 @@
       "mean_casualties": 71.4574491346904,
       "mean_false_alarms": 0.6666666666666666,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.001562999386806041,
+      "median_decision_ms": 0.0014830000054644188,
       "measured_offline_fraction": 0.6864583333333333,
       "n_episodes": 120
     },
@@ -296,7 +296,7 @@
       "mean_casualties": 78.40425848472857,
       "mean_false_alarms": 2.75,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.008646000424050726,
+      "median_decision_ms": 0.008756999932302278,
       "measured_offline_fraction": 0.6864583333333333,
       "n_episodes": 120
     },
@@ -308,7 +308,7 @@
       "mean_casualties": 49.99594609714704,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 2.4480395004502498,
+      "median_decision_ms": 2.4645180000106848,
       "measured_offline_fraction": 0.73125,
       "n_episodes": 120
     },
@@ -320,7 +320,7 @@
       "mean_casualties": 276.92039086362735,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 29.25,
-      "median_decision_ms": 0.0013429998944047838,
+      "median_decision_ms": 0.0012220000371598871,
       "measured_offline_fraction": 0.73125,
       "n_episodes": 120
     },
@@ -332,7 +332,7 @@
       "mean_casualties": 193.5202968114653,
       "mean_false_alarms": 0.0,
       "mean_missed_decisions": 29.25,
-      "median_decision_ms": 0.001321999661740847,
+      "median_decision_ms": 0.001232000158779556,
       "measured_offline_fraction": 0.73125,
       "n_episodes": 120
     },
@@ -344,7 +344,7 @@
       "mean_casualties": 72.61409005414176,
       "mean_false_alarms": 0.6166666666666667,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.001562999386806041,
+      "median_decision_ms": 0.0014929998997104121,
       "measured_offline_fraction": 0.73125,
       "n_episodes": 120
     },
@@ -356,7 +356,7 @@
       "mean_casualties": 82.00781814442698,
       "mean_false_alarms": 2.725,
       "mean_missed_decisions": 0.0,
-      "median_decision_ms": 0.008726001397008076,
+      "median_decision_ms": 0.008757000159675954,
       "measured_offline_fraction": 0.73125,
       "n_episodes": 120
     }
@@ -411,10 +411,10 @@
   "outage_len_steps": 6,
   "note": "Cloud baselines run an ORACLE expert policy with access to the simulator's latent risk; CONCLAVE sees only noisy sensors and text. Differences therefore measure availability, not capability.",
   "_meta": {
-    "timestamp": "2026-09-11T00:04:34",
-    "git": "nogit",
+    "timestamp": "2026-09-27T17:58:15",
+    "git": "5fe5422",
     "seed": 42,
-    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
     "machine": "x86_64",
     "python": "3.10.12",
     "logical_cores": 2,
