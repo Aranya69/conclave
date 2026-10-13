@@ -1,83 +1,28 @@
-@article{belcak2025slm,
-  title   = {Small Language Models are the Future of Agentic {AI}},
-  author  = {Belcak, Peter and Heinrich, Greg and Diao, Shizhe and Fu, Yonggan
-             and Dong, Xin and Muralidharan, Saurav and Lin, Yingyan Celine
-             and Molchanov, Pavlo},
-  journal = {arXiv preprint arXiv:2506.02153},
-  year    = {2025},
-  note    = {NVIDIA Research}
-}
-
-@article{haque2025tinyllm,
-  title   = {{TinyLLM}: Evaluation and Optimization of Small Language Models
-             for Agentic Tasks on Edge Devices},
-  author  = {Haque, Mohd Ariful and Rahman, Fahad and Gupta, Kishor Datta
-             and Shujaee, Khalil and George, Roy},
-  journal = {arXiv preprint arXiv:2511.22138},
-  year    = {2025}
-}
-
-% TODO(author): fill in the author list from https://arxiv.org/abs/2510.00078
-% (not recoverable from the abstract page at the time of writing).
-@misc{survey2025adaptive,
-  title        = {Adaptive and Resource-efficient Agentic {AI} Systems for Mobile
-                  and Embedded Devices: A Survey},
-  author       = {{Authors of arXiv:2510.00078}},
-  year         = {2025},
-  howpublished = {arXiv preprint arXiv:2510.00078}
-}
-
-@article{li2025disastercopilot,
-  title   = {Disaster Management in the Era of Agentic {AI} Systems: A Vision
-             for Collective Human-Machine Intelligence for Augmented Resilience},
-  author  = {Li, Bo and Ma, Junwei and Yin, Kai and Xiao, Yiming and
-             Hsu, Chia-Wei and Mostafavi, Ali},
-  journal = {arXiv preprint arXiv:2510.16034},
-  year    = {2025}
-}
-
-@inproceedings{alam2021humaid,
-  title     = {{HumAID}: Human-Annotated Disaster Incidents Data from Twitter
-               with Deep Learning Benchmarks},
-  author    = {Alam, Firoj and Qazi, Umair and Imran, Muhammad and Ofli, Ferda},
-  booktitle = {Proceedings of the International AAAI Conference on Web and
-               Social Media (ICWSM)},
-  volume    = {15},
-  pages     = {933--942},
-  year      = {2021}
-}
-
-@misc{patil2024bfcl,
-  title  = {Berkeley Function Calling Leaderboard},
-  author = {Patil, Shishir G. and Yan, Fanjia and Mao, Huanzhi and
-            Gonzalez, Joseph E.},
-  year   = {2024},
-  howpublished = {\url{https://gorilla.cs.berkeley.edu/leaderboard.html}}
-}
-
-@article{houlsby2011bald,
-  title   = {Bayesian Active Learning for Classification and Preference Learning},
-  author  = {Houlsby, Neil and Husz{\'a}r, Ferenc and Ghahramani, Zoubin and
-             Lengyel, M{\'a}t{\'e}},
-  journal = {arXiv preprint arXiv:1112.5745},
-  year    = {2011}
-}
+% References for CONCLAVE. Only Scopus-indexed sources are cited:
+%  - supplied papers: Scopus status 'Indexed' in
+%    'Scopus CiteScore 10+ Papers/Scopus_CiteScore_Check  2 (doi).xlsx' (Files tab);
+%  - others: NeurIPS (Venues tab of the same workbook), JMLR, Machine Learning, LNCS.
+% Datasets (BFCL, HumAID) are credited in footnotes, not here.
 
 @inproceedings{lakshminarayanan2017deepensembles,
   title     = {Simple and Scalable Predictive Uncertainty Estimation using
                Deep Ensembles},
   author    = {Lakshminarayanan, Balaji and Pritzel, Alexander and
                Blundell, Charles},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {30},
   year      = {2017}
 }
 
-@article{dietterich2000ensemble,
-  title   = {Ensemble Methods in Machine Learning},
-  author  = {Dietterich, Thomas G.},
-  journal = {Multiple Classifier Systems, LNCS 1857},
-  pages   = {1--15},
-  year    = {2000}
+@inproceedings{dietterich2000ensemble,
+  title     = {Ensemble Methods in Machine Learning},
+  author    = {Dietterich, Thomas G.},
+  booktitle = {Multiple Classifier Systems (MCS 2000)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {1857},
+  publisher = {Springer},
+  pages     = {1--15},
+  year      = {2000}
 }
 
 @article{breiman2001randomforest,
@@ -91,7 +36,8 @@
   title     = {{LightGBM}: A Highly Efficient Gradient Boosting Decision Tree},
   author    = {Ke, Guolin and Meng, Qi and Finley, Thomas and Wang, Taifeng and
                Chen, Wei and Ma, Weidong and Ye, Qiwei and Liu, Tie-Yan},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {30},
   year      = {2017}
 }
 
@@ -112,48 +58,312 @@
 @inproceedings{geifman2017selectivenet,
   title     = {Selective Classification for Deep Neural Networks},
   author    = {Geifman, Yonatan and El-Yaniv, Ran},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {30},
   year      = {2017}
 }
 
-@book{russell2020aima,
-  title     = {Artificial Intelligence: A Modern Approach},
-  author    = {Russell, Stuart and Norvig, Peter},
-  publisher = {Pearson}, edition = {4}, year = {2020}
+@article{hullermeier2021aleatoric,
+  author    = {H{\"u}llermeier, Eyke and Waegeman, Willem},
+  title     = {Aleatoric and epistemic uncertainty in machine learning: an
+               introduction to concepts and methods},
+  journal   = {Machine Learning},
+  volume    = {110},
+  number    = {3},
+  pages     = {457--506},
+  doi       = {10.1007/s10994-021-05946-3},
+  year      = {2021}
 }
 
-@article{wooldridge1995agents,
-  title   = {Intelligent Agents: Theory and Practice},
-  author  = {Wooldridge, Michael and Jennings, Nicholas R.},
-  journal = {The Knowledge Engineering Review},
-  volume  = {10}, number = {2}, pages = {115--152}, year = {1995}
+@inproceedings{valmeekam2023planning,
+  author    = {Valmeekam, Karthik and Marquez, Matthew and Sreedharan, Sarath and
+               Kambhampati, Subbarao},
+  title     = {On the Planning Abilities of Large Language Models -- A Critical
+               Investigation},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {36},
+  year      = {2023}
 }
 
-@book{kahneman2011thinking,
-  title     = {Thinking, Fast and Slow},
-  author    = {Kahneman, Daniel},
-  publisher = {Farrar, Straus and Giroux}, year = {2011}
+% ===== Literature supplied by the authors (Other Author Papers/) =====
+
+@inproceedings{yao2023tree,
+  author    = {Yao, Shunyu and Yu, Dian and Zhao, Jeffrey and Shafran, Izhak and Griffiths, Thomas L. and Cao, Yuan and Narasimhan, Karthik},
+  title     = {Tree of Thoughts: Deliberate Problem Solving with Large Language Models},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {36},
+  year      = {2023}
 }
 
-@article{kambhampati2023selfcritique,
-  title   = {Can Large Language Models Really Improve by Self-critiquing Their
-             Own Plans?},
-  author  = {Valmeekam, Karthik and Marquez, Matthew and Kambhampati, Subbarao},
-  journal = {arXiv preprint arXiv:2310.08118},
-  year    = {2023}
+@inproceedings{schick2023toolformer,
+  author    = {Schick, Timo and Dwivedi-Yu, Jane and Dess{\`\i}, Roberto and Raileanu, Roberta and Lomeli, Maria and Hambro, Eric and Zettlemoyer, Luke and Cancedda, Nicola and Scialom, Thomas},
+  title     = {Toolformer: Language Models Can Teach Themselves to Use Tools},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {36},
+  pages     = {68539--68551},
+  year      = {2023}
 }
 
-@inproceedings{guo2018calibration,
-  title     = {On Calibration of Modern Neural Networks},
-  author    = {Guo, Chuan and Pleiss, Geoff and Sun, Yu and Weinberger, Kilian Q.},
-  booktitle = {International Conference on Machine Learning (ICML)},
-  year      = {2017}
+@inproceedings{zhang2024chain,
+  author    = {Zhang, Yusen and Sun, Ruoxi and Chen, Yanfei and Pfister, Tomas and Zhang, Rui and Arik, Sercan {\"O}.},
+  title     = {Chain of Agents: Large Language Models Collaborating on Long-Context Tasks},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {37},
+  year      = {2024}
 }
 
-@inproceedings{rennie2003complementnb,
-  title     = {Tackling the Poor Assumptions of Naive Bayes Text Classifiers},
-  author    = {Rennie, Jason D. and Shih, Lawrence and Teevan, Jaime and
-               Karger, David R.},
-  booktitle = {International Conference on Machine Learning (ICML)},
-  year      = {2003}
+@inproceedings{ativo2026llm,
+  author    = {Ativo, Jacob and Balasubramaniyam, Bharaneeshwar and Tran, Anh and Gupta, Khushboo and Li, Hongmin and Caragea, Doina and Caragea, Cornelia},
+  title     = {{LLM-guided} Semi-Supervised Approaches for Social Media Crisis Data Classification},
+  booktitle = {Proceedings of the 23rd International ISCRAM Conference},
+  address   = {The Hague, the Netherlands},
+  doi       = {10.59297/bx082870},
+  year      = {2026}
+}
+
+@article{saengtabtim2025harnessing,
+  author    = {Saengtabtim, Kumpol and Leelawat, Natt and Aumnoysombat, Rujapa and Adelifar, Mahsa and Saengwongwattana, Natcha and Suktavornprasit, Gritaya and Suppasri, Anawat and Imamura, Fumihiko and Tang, Jing},
+  title     = {Harnessing generative {AI} for enhanced disaster management: a systematic review},
+  journal   = {Big Earth Data},
+  volume    = {9},
+  number    = {4},
+  pages     = {651-675},
+  doi       = {10.1080/20964471.2025.2521157},
+  year      = {2025}
+}
+
+@article{chen2026integration,
+  author    = {Chen, Zhaohui and Asadi Shamsabadi, Elyas and Jiang, Sheng and Shen, Luming and Dias-da-Costa, Daniel},
+  title     = {Integration of large vision language models for efficient post-disaster damage assessment and reporting},
+  journal   = {Nature Communications},
+  volume    = {17},
+  number    = {1},
+  pages     = {1481},
+  doi       = {10.1038/s41467-025-68216-z},
+  year      = {2026}
+}
+
+@article{alotaibi2024artificial,
+  author    = {Alotaibi, Emran and Nassif, Nadia},
+  title     = {Artificial intelligence in environmental monitoring: in-depth analysis},
+  journal   = {Discover Artificial Intelligence},
+  volume    = {4},
+  number    = {1},
+  pages     = {84},
+  doi       = {10.1007/s44163-024-00198-1},
+  year      = {2024}
+}
+
+@inproceedings{ticona2026llm,
+  author    = {Ticona, Belu and Anastasopoulos, Antonios},
+  title     = {{LLM-Powered} Automatic Translation and Urgency in Crisis Scenarios},
+  booktitle = {Proceedings of the 23rd International ISCRAM Conference},
+  address   = {The Hague, the Netherlands},
+  doi       = {10.59297/vtqcsb52},
+  year      = {2026}
+}
+
+@article{farazmehr2023locating,
+  author    = {Farazmehr, Shima and Wu, Yong},
+  title     = {Locating and deploying essential goods and equipment in disasters using {AI-enabled} approaches: A systematic literature review},
+  journal   = {Progress in Disaster Science},
+  volume    = {19},
+  pages     = {100292},
+  doi       = {10.1016/j.pdisas.2023.100292},
+  year      = {2023}
+}
+
+@article{xu2025large,
+  author    = {Xu, Fengyi and Ma, Jun and Li, Nan and Cheng, Jack C.P.},
+  title     = {Large language model applications in disaster management: An interdisciplinary review},
+  journal   = {International Journal of Disaster Risk Reduction},
+  volume    = {127},
+  pages     = {105642},
+  doi       = {10.1016/j.ijdrr.2025.105642},
+  year      = {2025}
+}
+
+@article{pang2026reconstruction,
+  author    = {Pang, Hansong and Lo, Man Kong and Leung, Andy Y.F. and Wu, Stephen},
+  title     = {Reconstruction of landslide events in urban setting using {LLM-based} Agentic {AI} with multimodal data},
+  journal   = {Soils and Foundations},
+  volume    = {66},
+  number    = {3},
+  pages     = {101789},
+  doi       = {10.1016/j.sandf.2026.101789},
+  year      = {2026}
+}
+
+@article{park2025optimizing,
+  author    = {Park, Byeong-Ju and Yong, Sung-Jung and Hwang, Hyun-Seo and Moon, Il-Young},
+  title     = {Optimizing Agent Behavior in the {MiniGrid} Environment Using Reinforcement Learning Based on Large Language Models},
+  journal   = {Applied Sciences},
+  volume    = {15},
+  number    = {4},
+  pages     = {1860},
+  doi       = {10.3390/app15041860},
+  year      = {2025}
+}
+
+@article{wang2025towards,
+  author    = {Wang, Yi and Wang, Chengliang and Zhang, Xueqing and Zeng, Li},
+  title     = {Towards Intelligent Emergency Management: A Scenario--Learning--Decision Framework Enabled by Large Language Models},
+  journal   = {Mathematics},
+  volume    = {13},
+  number    = {21},
+  pages     = {3463},
+  doi       = {10.3390/math13213463},
+  year      = {2025}
+}
+
+@article{yang2026automated,
+  author    = {Yang, Yichen and Wang, Qiang and Li, Weirong and Wang, Shu and Fang, Shifeng and Sun, Kai and Wang, Shunli and Wang, Hao and Dai, Xiaoliang and Li, Zhuan and Zhu, Yunqiang},
+  title     = {Automated extraction of spatiotemporal disaster knowledge for urban floods: a multimodal framework based on {LLMs} and agent},
+  journal   = {International Journal of Digital Earth},
+  volume    = {19},
+  number    = {1},
+  pages     = {2640706},
+  doi       = {10.1080/17538947.2026.2640706},
+  year      = {2026}
+}
+
+@article{ou2025combination,
+  author    = {Ou, Tsung-Hua and Yang, Tsun-Hua and Chang, Pei-Zen},
+  title     = {Combination of Large Language Models and Portable Flood Sensors for Community Flood Response: A Preliminary Study},
+  journal   = {Water},
+  volume    = {17},
+  number    = {7},
+  pages     = {1055},
+  doi       = {10.3390/w17071055},
+  year      = {2025}
+}
+
+@inproceedings{sultimov2026respond,
+  author    = {Sultimov, Roman and Mozikov, Mikhail and Abramov, Dmitrii and Kovalchuk, Maria and Malykh, Maksim and Makarov, Ilya and Osiptsov, Andrei and Volkov, Aleksandr and Maximov, Yury},
+  title     = {{RESPOND}: Realistic Environment Simulation of Population and Natural Disasters with {LLM-Driven} Agents},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence (AAAI-26)},
+  volume    = {40},
+  number    = {48},
+  pages     = {41694--41696},
+  doi       = {10.1609/aaai.v40i48.42384},
+  year      = {2026}
+}
+
+@article{han2025fine,
+  author    = {Han, Yaoyao and Liu, Jiping and Luo, An and Wang, Yong and Bao, Shuai},
+  title     = {Fine-Tuning {LLM-Assisted} {Chinese} Disaster Geospatial Intelligence Extraction and Case Studies},
+  journal   = {ISPRS International Journal of Geo-Information},
+  volume    = {14},
+  number    = {2},
+  pages     = {79},
+  doi       = {10.3390/ijgi14020079},
+  year      = {2025}
+}
+
+@article{wang2025fine,
+  author    = {Wang, Shunli and Li, Rui and Wu, Huayi and Li, Jiang and Shen, Yun},
+  title     = {Fine-grained flood disaster information extraction incorporating multiple semantic features},
+  journal   = {International Journal of Digital Earth},
+  volume    = {18},
+  number    = {1},
+  pages     = {2448221},
+  doi       = {10.1080/17538947.2024.2448221},
+  year      = {2025}
+}
+
+@article{yang2025novel,
+  author    = {Yang, Tsun-Hua and Wijaya, Obaja Triputera and Ardianto, Sandy and Christian, Albert Budi},
+  title     = {A Novel Multimodal Large Language Model-Based Approach for Urban Flood Detection Using Open-Access Closed Circuit Television in {Bandung}, {Indonesia}},
+  journal   = {Water},
+  volume    = {17},
+  number    = {18},
+  pages     = {2739},
+  doi       = {10.3390/w17182739},
+  year      = {2025}
+}
+
+@article{rashid2024integrating,
+  author    = {Rashid, Nor Aimuni Md and Abidin, Zaheera Zainal and Abas, Zuraida Abal},
+  title     = {Integrating Multi-Agent System and Case-Based Reasoning for Flood Early Warning and Response System},
+  journal   = {International Journal of Advanced Computer Science and Applications},
+  volume    = {15},
+  number    = {12},
+  doi       = {10.14569/IJACSA.2024.0151250},
+  year      = {2024}
+}
+
+@article{zhu2024flood,
+  author    = {Zhu, Jun and Dang, Pei and Cao, Yungang and Lai, Jianbo and Guo, Yukun and Wang, Ping and Li, Weilian},
+  title     = {A flood knowledge-constrained large language model interactable with {GIS}: enhancing public risk perception of floods},
+  journal   = {International Journal of Geographical Information Science},
+  volume    = {38},
+  number    = {4},
+  pages     = {603-625},
+  doi       = {10.1080/13658816.2024.2306167},
+  year      = {2024}
+}
+
+@article{chen2024enhancing,
+  author    = {Chen, Minze and Tao, Zhenxiang and Tang, Weitong and Qin, Tingxin and Yang, Rui and Zhu, Chunli},
+  title     = {Enhancing emergency decision-making with knowledge graphs and large language models},
+  journal   = {International Journal of Disaster Risk Reduction},
+  volume    = {113},
+  pages     = {104804},
+  doi       = {10.1016/j.ijdrr.2024.104804},
+  year      = {2024}
+}
+
+@article{wang2024comprehensive,
+  author    = {Wang, Fali and Zhang, Zhiwei and Zhang, Xianren and Wu, Zongyu and Mo, Tzuhao and Lu, Qiuhao and Wang, Wanjing and Li, Rui and Xu, Junjie and Tang, Xianfeng and He, Qi and Ma, Yao and Huang, Ming and Wang, Suhang},
+  title     = {A Comprehensive Survey of Small Language Models in the Era of Large Language Models: Techniques, Enhancements, Applications, Collaboration with {LLMs}, and Trustworthiness},
+  journal   = {ACM Transactions on Intelligent Systems and Technology},
+  volume    = {16},
+  number    = {6},
+  pages     = {1--87},
+  doi       = {10.1145/3768165},
+  year      = {2025}
+}
+
+@article{ronco2026disaster,
+  author    = {Ronco, Michele and Bandelli, Luca and Bertolini, Lorenzo and Consoli, Sergio and Delforge, Damien and Spadaro, Alessio and Verile, Marco and Corbane, Christina},
+  title     = {Disaster Storylines and Knowledge Graphs from Global News with Large Language Models and Retrieval-Augmented Generation},
+  journal   = {Scientific Data},
+  volume    = {13},
+  number    = {1},
+  pages     = {689},
+  doi       = {10.1038/s41597-026-07036-2},
+  year      = {2026}
+}
+
+@article{sen2026context,
+  author    = {Sen, Adnan Ahmed Abi and Aljohani, Fares Hamad and Bahbouh, Nour Mahmoud and Mnaouer, Adel Ben and Tayan, Omar and Alkhodre, Ahmad. B.},
+  title     = {A Context-Aware Flood Warning Framework Integrating Ensemble Learning and {LLMs}},
+  journal   = {GeoHazards},
+  volume    = {7},
+  number    = {1},
+  pages     = {35},
+  doi       = {10.3390/geohazards7010035},
+  year      = {2026}
+}
+
+@article{mandana2025evullm,
+  author    = {Mandana, Eleni and Vlahavas, George and Vakali, Athena},
+  title     = {{EVuLLM}: {Ethereum} Smart Contract Vulnerability Detection Using Large Language Models},
+  journal   = {Electronics},
+  volume    = {14},
+  number    = {16},
+  pages     = {3226},
+  doi       = {10.3390/electronics14163226},
+  year      = {2025}
+}
+
+@article{aththanayake2026resqconnect,
+  author    = {Aththanayake, Savinu and Mallikarachchi, Chemini and Wickramasinghe, Janeesha and Kugarajah, Sajeev and Meedeniya, Dulani and Pradhan, Biswajeet},
+  title     = {{ResQConnect}: An {AI-Powered} Multi-Agentic Platform for Human-Centered and Resilient Disaster Response},
+  journal   = {Sustainability},
+  volume    = {18},
+  number    = {2},
+  pages     = {1014},
+  doi       = {10.3390/su18021014},
+  year      = {2026}
 }

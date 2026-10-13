@@ -1,21 +1,25 @@
 \documentclass[journal]{IEEEtran}
 \usepackage[utf8]{inputenc}
-\usepackage{amsmath,amssymb,graphicx,booktabs,url,balance}
+\usepackage{amsmath,amssymb,graphicx,booktabs,array,url,balance}
+\usepackage{float}
 \usepackage[hidelinks]{hyperref}
 \usepackage{multirow}
 \graphicspath{{figures/}}
+\floatstyle{ruled}
+\newfloat{algorithm}{t}{loa}
+\floatname{algorithm}{Algorithm}
 
 \begin{document}
 
-\title{CONCLAVE: Agentic AI Without a Language Model --- \\
-Ensemble Machine Learning as the Cognitive Core for \\
+\title{CONCLAVE: Agentic AI Without a Language Model ---
+Ensemble Machine Learning as the Cognitive Core for
 Connectivity-Denied Autonomous Systems}
 
 \author{Aranya~Mahmud%
 \thanks{Department of Computer Science and Engineering, Daffodil International
 University, Dhaka, Bangladesh. E-mail: aranyamahmud29@gmail.com}%
 \thanks{Code, data-preparation scripts, and all result artefacts are available at
-\url{https://github.com/<user>/conclave}.}}
+\url{https://github.com/Aranya69/conclave}.}}
 
 \markboth{Preprint --- under review}%
 {Mahmud: Agentic AI Without a Language Model}
@@ -23,317 +27,1007 @@ University, Dhaka, Bangladesh. E-mail: aranyamahmud29@gmail.com}%
 \maketitle
 
 \begin{abstract}
-Every widely used agentic AI framework places a language model at the centre
-of the sense--decide--act loop. That choice imports two dependencies that are
-untenable in the environments where autonomy matters most: a network path to
-a remote model, or enough local compute to host one. During a flood, a
-cyclone, or an earthquake --- precisely when an autonomous responder is most
-valuable --- cellular and backhaul infrastructure is among the first
-casualties, and the field hardware that survives is battery-powered and
-memory-constrained. We ask whether the language model is actually load-bearing
-for the class of agentic tasks these deployments require, and find that it
-often is not. We present \textbf{CONCLAVE}, a framework in which a heterogeneous
-machine-learning ensemble replaces the language model as the cognitive core,
-supplying action selection, open-vocabulary tool routing, calibrated
-abstention, and an explicit uncertainty decomposition that a single model
-cannot provide. On the Berkeley Function Calling Leaderboard, CONCLAVE's ranking
-ensemble selects the correct tool with $90.8\%$ top-1 accuracy on the
-user-contributed multi-tool split, $78.9\%$ when every test tool was unseen
-during training, in $4.0$\,ms per decision from a $631$\,KB model. On the
-HumAID crisis-triage benchmark it reaches $74.3\%$ weighted F1 against
-$76.0\%$ for the RoBERTa baseline the dataset authors report on the same
-combined split --- a $1.8$-point gap --- while exceeding every classical
-baseline they report, from a $36$\,MB artefact rather than a $125$M-parameter
-transformer. In
-a sequential flood-response simulation, CONCLAVE is statistically
-indistinguishable from an \emph{oracle} cloud agent under full connectivity
-($\Delta = 0.6$, 95\% CI $[-0.7, 1.9]$) and significantly better once
-outages begin, converting a $-127$ mean return into $+34$ when $73\%$ of
-steps are offline. We also report a negative result: ensemble disagreement,
-while an excellent detector of covariate shift (AUROC up to $0.955$), does
-\emph{not} outperform random allocation when used to direct a scarce human
-oversight budget in a sequential task. CONCLAVE is released under Apache-2.0.
+Agentic artificial intelligence (AI) systems observe their environment, take
+decisions and act through software tools, and most of them are built around a
+large language model (LLM) running on a cloud server or on powerful local
+hardware. In disaster response this is a serious problem: during floods,
+cyclones and earthquakes the communication network is often among the first
+infrastructures to fail, and the devices left in the field are low-cost and
+battery-powered, so an LLM-based agent may become unavailable exactly when it
+is most needed. To address this problem, this paper proposes
+\textbf{CONCLAVE}, an agentic AI framework in which a heterogeneous ensemble of
+classical machine learning models replaces the LLM as the decision-making core.
+The framework combines hashed text and sensor features, a soft-voting
+committee, a decomposition of aleatoric and epistemic uncertainty, a calibrated
+gate that decides whether to act, gather evidence, abstain or escalate, and a
+NumPy-only runtime for low-cost boards. On two public
+datasets, a flood-response simulator and emulated hardware profiles, CONCLAVE
+selects the correct tool with $90.8\%$ accuracy in $4.0$\,ms, reaches
+$74.3\%$ weighted F1 on crisis tweets, and keeps a positive return of $33.5$
+when $73\%$ of the steps are offline, whereas a cloud-dependent agent falls to
+$-127.3$. Against eight other machine-learning-based agents it obtains the
+highest return and the fewest casualties, and its runtime needs $32$\,MB of
+memory and an estimated $1.7$\,ms per decision on a Raspberry Pi Zero~2\,W.
+Hence, reliable agentic decision-making for disaster response is possible
+without the internet and on inexpensive hardware.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Agentic AI, ensemble learning, edge computing, offline autonomy, disaster
-response, uncertainty quantification, tool use.
+Agentic AI, ensemble learning, disaster response, edge computing, offline
+autonomy, uncertainty quantification, tool use, Raspberry Pi.
 \end{IEEEkeywords}
 
 \section{Introduction}
-\IEEEPARstart{T}{he} contemporary AI agent is defined by its cognitive core.
-Frameworks such as LangGraph, CrewAI, AutoGen, and the various vendor agent
-SDKs differ in orchestration, memory, and tooling, but agree on one point: a
-large language model performs the reasoning, and everything else is
-scaffolding. This consensus has proven productive for open-ended, text-mediated
-work.
+\IEEEPARstart{F}{loods}, cyclones and earthquakes regularly disrupt human
+life, damage infrastructure and cause heavy economic loss, and densely
+populated, low-lying regions are among the most exposed. Effective disaster
+management depends on timely decisions in every phase of the disaster
+lifecycle, from early warning to rescue and recovery. Over the last decade,
+artificial intelligence (AI) has made important contributions to this field.
+Machine learning (ML) models have been used for environmental
+monitoring~\cite{alotaibi2024artificial} and for locating and deploying relief
+goods~\cite{farazmehr2023locating}; multi-agent and case-based reasoning
+systems have been proposed for flood early warning~\cite{rashid2024integrating};
+ensemble learning has been combined with Internet-of-Things (IoT) sensors for
+flood detection~\cite{sen2026context}; and, more recently, language and vision
+models have been applied to post-disaster damage
+assessment~\cite{chen2026integration}, to the extraction of flood information
+from text and images~\cite{wang2025fine,yang2026automated}, and to emergency
+decision support~\cite{chen2024enhancing,wang2025towards}. Recent reviews
+document such applications across the full disaster
+lifecycle~\cite{xu2025large,saengtabtim2025harnessing}.
 
-It is a poor fit for a distinct and important class of deployments. Consider a
-flood-warning and response system in a riverine district. It ingests gauge
-readings and radio traffic; it must decide when to broadcast a warning, when to
-begin evacuation, when to commit scarce boats, and when to defer to a human
-coordinator. The decisions recur with little variation, the input is largely
-structured, and the consequences are severe. Crucially, the system's value peaks
-exactly when the cellular network has failed. A cloud-backed agent in that
-moment is not degraded; it is absent.
+At the same time, a new class of AI systems, known as \emph{agentic} AI, has
+emerged. An AI agent does not only classify or predict: it observes its
+environment, decides what to do, and acts through software tools in a loop.
+Since Toolformer~\cite{schick2023toolformer} showed that a language model can
+learn when to call external tools, agent design has converged on a common
+pattern in which a large language model (LLM) performs the reasoning and the
+other components --- memory, tools and planners --- are built around it. The
+pattern has been extended with deliberate search over reasoning
+paths~\cite{yao2023tree} and with collaboration among several LLM
+agents~\cite{zhang2024chain}. Disaster management has adopted it quickly:
+agentic systems now automate post-disaster damage assessment and
+reporting~\cite{chen2026integration}, coordinate response
+activities~\cite{aththanayake2026resqconnect}, and support emergency
+decision-making~\cite{wang2025towards,chen2024enhancing}.
 
-The field has recognised the resource half of this problem. A recent survey of
-adaptive agentic AI for mobile and embedded devices~\cite{survey2025adaptive}
-catalogues elastic inference, test-time adaptation, and cloud--edge offloading
---- but frames the entire design space around ``foundation models as the
-cognitive core,'' so every technique is a way of \emph{compressing} the language
-model. NVIDIA's position paper~\cite{belcak2025slm} pushes further, arguing that
-because agentic invocations are ``a small number of specialised tasks performed
-repetitively and with little variation,'' small language models are sufficient
-and 10--30$\times$ cheaper. Empirical follow-up is sobering: TinyLLM's
-evaluation of sub-3B models on function calling reports a best overall accuracy
-of $65.74\%$~\cite{haque2025tinyllm}, and even a quantised 0.5B model needs
-roughly half a gigabyte of weights.
+However, these systems share a dependency that is critical in disaster
+settings. Many of them send their reasoning to hosted models, for example
+GPT-4 in DisasTeller~\cite{chen2026integration} and ChatGPT-4o-mini through a
+cloud application programming interface (API) in a community flood-sensor
+system~\cite{ou2025combination}. During a flood or a cyclone, cellular and
+backhaul networks are often among the first infrastructures to fail, and the
+hardware that remains in the field is usually low-cost and battery-powered.
+Under such conditions a cloud-backed agent cannot reason at all. A local LLM
+avoids the network, but it needs a large amount of memory and computing power,
+which inexpensive devices such as the Raspberry Pi do not provide.
 
-We take the NVIDIA argument one step further than its authors do. If the task is
-genuinely specialised, repetitive, and low-variance, the question is not how
-small the language model can be --- it is whether a language model is required
-at all. Natural language is a means of \emph{specifying} the task, not
-necessarily of executing it. Once the tool set is registered and the decision
-space is enumerated, the residual problem is classification, ranking, and
-sequential control under uncertainty: the problem classical machine learning was
-built for, and solves in kilobytes and microseconds.
+The research community has responded mainly by \emph{compressing} the language
+model. A broad survey of small language models (SLMs) describes the
+compression techniques that make them viable on edge hardware, together with
+their use in specialised, domain-specific
+settings~\cite{wang2024comprehensive}, and in disaster response this line has
+produced genuinely offline systems: ResQConnect, for example, provides offline
+mobile guidance from an edge-deployed SLM in under $500$\,ms per
+response~\cite{aththanayake2026resqconnect}. Nevertheless, compressed models
+still occupy hundreds of megabytes to gigabytes, need hundreds of milliseconds
+per response, and inherit the failure modes of generative models, such as
+unreliable output that must be constrained by external
+knowledge~\cite{chen2024enhancing} and urgency judgements that change across
+languages for identical scenarios~\cite{ticona2026llm}.
 
-This paper makes that case concretely.
+Many decisions of an autonomous disaster responder, however, are not
+open-ended. Once the set of tools is registered and the possible actions are
+enumerated, the remaining problem is classification, ranking and sequential
+control under uncertainty, which is exactly the problem that classical ML
+solves efficiently. There is already evidence for this view: on crisis-tweet
+classification, compact semi-supervised models can outperform very large LLMs
+used in zero-shot mode~\cite{ativo2026llm}. Therefore, the research question of
+this paper is as follows: \emph{can an agent whose decision-making core is an
+ensemble of classical ML models, without any language model, provide reliable
+agentic behaviour for disaster response when there is no internet and only
+low-cost hardware is available?}
 
-\subsection{Contributions}
+To answer this question, we propose CONCLAVE, an agentic AI framework whose
+cognitive core is a heterogeneous committee of classical ML models. The
+committee selects actions and tools; the disagreement among its members gives
+an estimate of uncertainty; and a calibrated gate uses this estimate to decide
+whether the agent should act, gather more evidence, abstain or escalate the
+decision to a human. The complete agent runs offline and fits on a board such
+as the Raspberry Pi Zero~2\,W.
+
+The main contributions of this paper are summarised as follows:
 \begin{enumerate}
-\item \textbf{A framework.} CONCLAVE realises the full agentic loop --- perception,
-      action selection, open-vocabulary tool routing, symbolic planning over
-      tool preconditions, case-based episodic memory, and hard safety
-      constraints --- with a heterogeneous ML ensemble in place of a language
-      model. It has no network dependency, requires no GPU, and serialises to
-      under $250$\,KB for the disaster agent.
-\item \textbf{Uncertainty as control flow.} Because the core is a committee,
-      total predictive uncertainty decomposes into aleatoric and epistemic
-      parts at no additional cost. CONCLAVE routes on this decomposition: act,
-      gather more evidence, abstain, or escalate. We calibrate the thresholds
-      by selective prediction rather than hand-tuning them.
-\item \textbf{Bounded worst-case decision latency.} A decision is a fixed number
-      of estimator evaluations and a bounded-depth planning search. There is no
-      analogue of an unbounded generation loop, so p99 latency is a measurable
-      constant --- a property that matters for certifying safety-critical
-      autonomy.
-\item \textbf{Evaluation across four axes,} on public benchmarks: tool routing
-      and abstention (BFCL v3), crisis perception (HumAID), sequential control
-      under connectivity loss, and resource cost under emulated edge profiles.
-\item \textbf{An honest negative result.} We show where the approach's central
-      intuition fails: instantaneous ensemble disagreement is a poor allocator
-      of scarce human oversight in sequential tasks, losing to random
-      allocation. We analyse why and identify the correction.
+\item \textbf{An LLM-free agentic AI framework.} CONCLAVE realises the
+      complete agent loop --- perception, action selection, open-vocabulary
+      tool routing, symbolic planning, case-based episodic memory and safety
+      constraints --- with a committee of classical ML models. The trained
+      disaster agent occupies $232$\,KB and takes about $2.5$\,ms per decision
+      on a CPU.
+\item \textbf{Uncertainty-aware control.} The committee's predictive entropy
+      is decomposed into aleatoric and epistemic parts, which are mapped to
+      four control actions (act, gather, abstain and escalate) with thresholds
+      calibrated by selective prediction rather than set by hand.
+\item \textbf{A complete data engineering and evaluation protocol.} The
+      framework is evaluated on two public datasets,
+      BFCL\footnote{Berkeley Function Calling Leaderboard, maintained by
+      S.~G.~Patil \emph{et al.} at UC Berkeley:
+      \url{https://gorilla.cs.berkeley.edu/leaderboard.html}.} and
+      HumAID\footnote{HumAID was released by F.~Alam, U.~Qazi, M.~Imran and
+      F.~Ofli (ICWSM 2021) and is available at
+      \url{https://huggingface.co/datasets/QCRI/HumAID-all}.}, on a
+      flood-response simulator with controllable network outages, and on
+      emulated low-cost hardware. A NumPy-only edge runtime reduces the memory
+      needed on the device from $185$\,MB to $32$\,MB without changing any
+      decision.
+\item \textbf{A comprehensive comparison with other agents.} Under
+      no-internet and low-cost-hardware conditions, CONCLAVE is compared with
+      eight other machine-learning-based agents, a cloud-dependent agent and
+      fixed threshold rules. It gives the highest closed-loop return and the
+      lowest casualties, while remaining one of the cheapest agents to run.
 \end{enumerate}
 
-\section{Related Work}
+The rest of this paper is organised as follows. Section~\ref{sec:lit}
+reviews the related literature. Section~\ref{sec:method} describes the
+proposed methodology, including data collection, data engineering, the models,
+the uncertainty mechanism and the evaluation protocol.
+Section~\ref{sec:results} presents the experimental results and the
+comparison with other agents. Section~\ref{sec:discussion} discusses the
+findings and their practical implications, Section~\ref{sec:limits} states
+the limitations and future work, and Section~\ref{sec:conclusion} concludes
+the paper.
 
-\subsection{LLM-centred agent frameworks}
-The dominant frameworks all assume a language model performs reasoning, tool
-selection, and planning. Their limitations under resource constraint are
-well-documented and have prompted an active compression literature, but the
-architectural assumption is rarely questioned. Work on LLM planning
-competence~\cite{kambhampati2023selfcritique} independently suggests that
-autoregressive models are weak planners absent an external verifier, which
-further undercuts the case for placing one at the centre of a control loop.
+\section{Literature Review}\label{sec:lit}
+Intelligent decision support for disasters did not begin with language models.
+Earlier work used multi-agent and case-based reasoning systems for flood early
+warning~\cite{rashid2024integrating}, machine learning for environmental
+monitoring and relief logistics~\cite{alotaibi2024artificial,farazmehr2023locating},
+and ensemble learning with IoT sensors~\cite{sen2026context}. More recent work
+uses LLM-based agents that reason over text, images and
+tools~\cite{xu2025large,saengtabtim2025harnessing}. These newer systems are the
+most capable, but they also depend the most on connectivity and computing
+power. This section reviews the literature in five parts and then identifies
+the research gap.
 
-\subsection{Small language models at the edge}
-The SLM-agent line~\cite{belcak2025slm,haque2025tinyllm} shares our diagnosis ---
-that agentic workloads are narrow and repetitive --- but not our conclusion.
-TinyLLM~\cite{haque2025tinyllm} is our closest point of comparison: it evaluates
-TinyAgent, TinyLlama, Qwen, and xLAM on BFCL with SFT, PEFT, RL, and DPO
-optimisation, reaching $65.74\%$ overall and $55.62\%$ multi-turn accuracy. We
-note carefully that BFCL's headline metric includes argument-level AST matching,
-so our tool-selection numbers are \emph{not} directly comparable; we make the
-comparison only on cost, where the gap is several orders of magnitude, and on
-the routing sub-task, which we measure separately.
+\subsection{LLM-centred agent architectures}
+The dominant agent architectures place an LLM at the centre of a
+reason--act loop. Tree of Thoughts~\cite{yao2023tree} extends chain-of-thought
+prompting to a deliberate search over reasoning paths and raises the success
+rate of GPT-4 on the Game of 24 from $4\%$ to $74\%$;
+Toolformer~\cite{schick2023toolformer} learns in a self-supervised way which
+APIs to call; and Chain of Agents~\cite{zhang2024chain} distributes long-context
+reasoning across worker and manager LLMs. The same core has been proposed as a
+replacement for reinforcement-learning policies, selecting actions directly
+from textual descriptions of the state~\cite{park2025optimizing}. On the other
+hand, a systematic evaluation has shown that LLMs generate executable plans
+poorly on their own~\cite{valmeekam2023planning}, which suggests caution in
+placing such a model at the centre of a safety-critical control loop.
 
-\subsection{Agentic AI for disaster management}
-Disaster Copilot~\cite{li2025disastercopilot} proposes a multi-agent
-orchestrator for disaster response and explicitly raises resource-limited
-operation, but it is a vision paper: no implementation, and on-device
-orchestration is a design goal rather than a measured result. Deployed AIoT
-flood systems typically use a fixed model pipeline with no agency --- no tool
-selection, no abstention, no planning. CONCLAVE occupies the space between: real
-autonomy, actually offline.
+\subsection{LLMs and agents in disaster management}
+\textit{Surveys.} Reviews now cover LLM applications in disaster
+management~\cite{xu2025large}, generative AI more
+broadly~\cite{saengtabtim2025harnessing}, AI methods for locating and deploying
+relief goods~\cite{farazmehr2023locating}, and AI in environmental monitoring,
+where a bibliometric analysis of 4{,}762 publications identifies disaster
+management as a principal application~\cite{alotaibi2024artificial}.
 
-\subsection{Ensembles and uncertainty}
-That ensembles improve accuracy and produce useful uncertainty estimates is
-long established~\cite{dietterich2000ensemble,breiman2001randomforest,%
-lakshminarayanan2017deepensembles}. The mutual-information decomposition we use
-originates in Bayesian active learning~\cite{houlsby2011bald}, and selective
-prediction has its own literature~\cite{elyaniv2010selective,%
-geifman2017selectivenet}. Our contribution is not these components but their
-composition: using them as the \emph{control substrate} of an autonomous agent,
-and evaluating whether that composition survives contact with agentic
-benchmarks.
+\textit{Multi-agent response systems.} DisasTeller coordinates four
+vision--language agents around GPT-4 for damage assessment, alerting and
+recovery planning~\cite{chen2026integration}; the Scenario--Learning--Decision
+framework couples LLM agents with prospect-theoretic modelling for wildfire
+response~\cite{wang2025towards}; ResQConnect combines agentic retrieval with
+adaptive resource routing~\cite{aththanayake2026resqconnect}; and LLM-driven
+agents have been used to simulate population behaviour during
+disasters~\cite{sultimov2026respond}.
 
-\section{The CONCLAVE Framework}
+\textit{Perception and information extraction.} LLMs have been applied to the
+multimodal extraction of flood water depth~\cite{yang2026automated}, to
+geospatial intelligence extraction from Chinese disaster
+text~\cite{han2025fine}, to fine-grained flood
+information~\cite{wang2025fine}, to urban flood detection from 340 CCTV feeds,
+where four multimodal LLMs were compared on both accuracy and operational
+cost~\cite{yang2025novel}, and to the reconstruction of landslide events from
+witness reports and site imagery~\cite{pang2026reconstruction}. Knowledge
+graphs are a recurring device for constraining LLM output: they ground
+flood-risk dialogue and GIS interaction~\cite{zhu2024flood}, build disaster
+storylines from global news~\cite{ronco2026disaster}, and steer emergency
+decision support, motivated explicitly by the unreliability of unconstrained
+LLM output~\cite{chen2024enhancing}. Portable flood sensors have also been
+paired with an LLM to personalise community warnings~\cite{ou2025combination}.
 
-\subsection{Overview}
-An CONCLAVE tick is:
-\[
-\text{observe} \rightarrow \text{featurise} \rightarrow
-\underbrace{\text{ensemble posterior}}_{\text{committee}} \rightarrow
-\underbrace{\text{episodic prior}}_{\text{k-NN}} \rightarrow
-\text{gate} \rightarrow \text{constraints} \rightarrow \text{act}
-\]
-Every stage is a bounded amount of arithmetic and none touches the network.
+\subsection{Crisis text classification}
+HumAID is the standard benchmark for humanitarian tweet triage, and its
+authors report transformer and classical baselines on its official split, with
+which we compare in Section~\ref{sec:humaid}. LLM-guided semi-supervised
+learning improves low-resource crisis classification, and compact
+semi-supervised models can outperform large zero-shot LLMs~\cite{ativo2026llm}.
+For multilingual crisis messages, LLM urgency judgements vary widely across
+languages, whereas human judgements do not~\cite{ticona2026llm}.
 
-\subsection{Observations and budgeted features}
-An \texttt{Observation} carries numeric features (gauge readings, resource
-counts) and optional free text (a radio transcript, an SMS field report).
-Text is featurised by the hashing trick with TF--IDF reweighting, so the
-featuriser has \emph{no stored vocabulary} and its footprint is fixed at
-construction. This is the single most consequential engineering choice for
-microcontroller-class targets: a conventional fitted vocabulary on HumAID
-occupies roughly $98$\,MB, whereas the hashed featuriser is constant-size and
-tunable by one parameter, which we sweep in Section~\ref{sec:humaid}.
+\subsection{Compact and offline models}
+The SLM line of work~\cite{wang2024comprehensive} shares our diagnosis --- many
+workloads are narrow and specialised --- but it keeps the language model.
+Parameter-efficient fine-tuning with QLoRA is widely used to obtain lightweight
+LLMs, including outside the disaster domain, for example in smart-contract
+vulnerability detection~\cite{mandana2025evullm}. In disaster settings, this
+line has reached genuine offline operation: the edge SLM of ResQConnect answers
+in under $500$\,ms on commodity smartphones~\cite{aththanayake2026resqconnect}.
 
-\subsection{The ensemble brain}
-The core is a soft-voting committee of \emph{deliberately heterogeneous}
-members --- a boosted tree model, a bagged forest, and a linear
-model, plus a generative naive-Bayes member for text. Homogeneity is the
-failure mode to avoid: a random forest's trees share an inductive bias, so
-their disagreement collapses off-distribution exactly when the agent most
-needs a warning. Mixing model families keeps the disagreement signal alive.
+\subsection{Classical ensembles, case-based reasoning and uncertainty}
+The closest architecture to ours is the flood-warning framework of Sen et
+al.~\cite{sen2026context}, which aggregates a deep network, a random forest
+and a nearest-neighbour classifier over IoT sensor data and pairs them with an
+LLM for social-media text. Two design choices separate it from CONCLAVE.
+First, its committee is aggregated by \emph{hard majority vote}, which discards
+the spread of the members' probabilities that our gate uses as an epistemic
+signal. Second, it keeps an LLM for text and relies on fog and cloud layers.
+Case-based reasoning has been combined with multi-agent systems for flood early
+warning at the conceptual level~\cite{rashid2024integrating}; CONCLAVE's
+episodic memory is a case-based-reasoning component that is implemented and
+evaluated. It is well established that ensembles improve accuracy and give
+useful uncertainty
+estimates~\cite{dietterich2000ensemble,breiman2001randomforest,lakshminarayanan2017deepensembles};
+the split of predictive uncertainty into aleatoric and epistemic parts that we
+use follows the standard entropy-based
+formulation~\cite{hullermeier2021aleatoric}; and selective prediction, in which
+a model may decline to predict, has its own
+literature~\cite{elyaniv2010selective,geifman2017selectivenet}.
 
-Two defaults are set from measurement rather than convention. First,
-\texttt{n\_jobs=1}: an agent decides about one observation at a time over a
-handful of candidate actions, and joblib's thread-pool construction costs
-roughly $20\times$ more than the prediction itself at that batch size
-($90$\,ms versus $4$\,ms in our measurements). Parallelism is a throughput
-optimisation and a latency pessimisation; edge agents want the latter. Second,
-shallow forests: depth-10, 60-estimator forests lose well under a point of
-accuracy against unbounded 200-tree forests while cutting the serialised model
-roughly $9\times$.
+\subsection{Research gap}
+Table~\ref{tab:related} compares CONCLAVE with the systems closest to it. Three
+gaps can be identified from the above review. First, offline capability, where
+it exists, is obtained by shrinking a language model, which still needs
+hundreds of megabytes and hundreds of milliseconds per decision. Second,
+escalation to a human, where it exists, is a workflow decision rather than a
+calibrated function of model uncertainty. Third, the ensemble-based disaster
+systems discard the members' probability spread and still depend on fog or
+cloud layers. To the best of our knowledge, no existing work removes the
+language model from the agent loop altogether, uses committee disagreement as
+a control signal, and evaluates the resulting agent under network outages and
+on low-cost hardware. CONCLAVE is designed to fill this gap.
 
-\subsection{Uncertainty decomposition as control flow}
-For member posteriors $\{p_m\}_{m=1}^{M}$ over $K$ actions with mean
-$\bar{p}$, we compute
-\begin{align}
-\underbrace{\mathcal{H}[\bar{p}]}_{\text{total}} =
-\underbrace{\tfrac{1}{M}\textstyle\sum_m \mathcal{H}[p_m]}_{\text{aleatoric}} +
-\underbrace{\Big(\mathcal{H}[\bar{p}] - \tfrac{1}{M}\textstyle\sum_m
-\mathcal{H}[p_m]\Big)}_{\text{epistemic}},
-\end{align}
-each normalised by $\log K$. The distinction is operationally meaningful. High
-aleatoric uncertainty means the members agree the situation is genuinely
-ambiguous; more sensing will not help, so the agent should abstain. High
-epistemic uncertainty means the members disagree --- the agent is outside its
-competence, and should gather evidence or escalate. A single model cannot
-separate these without expensive sampling; a committee gets it for free.
+\begin{table*}[t]
+\centering
+\caption{Systems closest to CONCLAVE. ``Not reported'' means the paper does not
+describe the property, not that the system lacks it.}
+\label{tab:related}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llllll}
+\toprule
+System & Reasoning core & Task & Network at inference & Escalation & Footprint \\
+\midrule
+DisasTeller~\cite{chen2026integration} & GPT-4 + 4 LVLM agents & Damage assessment & Hosted LLM & Not reported & Cloud \\
+Ou et al.~\cite{ou2025combination} & ChatGPT-4o-mini & Community flood alerts & Cloud API & Not reported & Cloud \\
+Sen et al.~\cite{sen2026context} & DL+RF+KNN vote + LLM & Flood detection & Fog + cloud & Not reported & Fog/cloud \\
+ResQConnect~\cite{aththanayake2026resqconnect} & Agentic RAG + edge SLM & Response coordination & Offline guidance tier & Human oversight & Smartphone \\
+Rashid et al.~\cite{rashid2024integrating} & MAS + CBR & Flood warning & Not reported & Not reported & Conceptual \\
+\midrule
+\textbf{CONCLAVE (ours)} & \textbf{ML committee, no LM} & \textbf{Agentic control + triage} & \textbf{Offline} & \textbf{Calibrated gate} & \textbf{232\,KB} \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
-Gate thresholds are \emph{calibrated}, not chosen: we select the largest
-coverage whose accuracy on accepted decisions meets a target precision, which
-is standard selective prediction and keeps the framework honest.
+\section{Methodology}\label{sec:method}
+This section describes the proposed methodology step by step. Fig.~\ref{fig:method}
+shows the overall workflow, which consists of six stages: (1) data collection,
+(2) data engineering, (3) feature engineering, (4) model training, (5) the
+offline agent loop, and (6) evaluation. The problem is first formulated in
+Section~\ref{sec:problem}; the data and their preparation are described in
+Sections~\ref{sec:data}--\ref{sec:prep}; the features, models and uncertainty
+mechanism are explained in Sections~\ref{sec:features}--\ref{sec:constraints};
+the complete decision loop is given in Algorithm~\ref{alg:loop} and
+Fig.~\ref{fig:agent}; and the simulator, the edge runtime, the compared agents
+and the evaluation metrics are described in
+Sections~\ref{sec:sim}--\ref{sec:impl}.
 
-\subsection{Open-vocabulary tool routing}
-Rather than classifying into a fixed action label set, the router scores
-\emph{(request, tool-specification) pairs} with a ranking ensemble over
-lexical-overlap, TF--IDF-similarity, and schema-structure features. Because it
-scores pairs, a tool registered after training is scored by the same features
-as any other --- the agent gains capabilities without retraining, which is the
-property that makes LLM routers attractive in the first place. Specification
-vectors are static and cached at registration, so routing costs one query
-vectorisation plus a few sparse dot products.
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_method.pdf}
+\caption{Overall methodology of the proposed CONCLAVE framework. Each public
+dataset or test bed passes through data engineering and feature engineering
+before training a committee of classical ML models; the trained committees are
+deployed in an offline agent loop, and every stage is evaluated on accuracy,
+closed-loop performance and resource cost.}
+\label{fig:method}
+\end{figure*}
 
-\subsection{Planning, memory, and constraints}
-A cost-optimal forward search over tool preconditions and effects, with an
-admissible set-cover heuristic and a hard depth bound, handles action ordering;
-termination is guaranteed by construction. Episodic memory is a capacity-bounded
-$k$-NN store over past (observation, action, reward) cases that contributes a
-prior over actions --- the ensemble agent's counterpart to in-context learning,
-at kilobytes and microseconds. Finally, a constraint layer sits \emph{above} the
-learned policy: no statistical model may authorise an irreversible act on its
-own, and a violated constraint converts the action into a recorded escalation.
+\subsection{Problem formulation}\label{sec:problem}
+We consider an agent that interacts with an environment in discrete time steps
+$t=1,\dots,T$. At each step the agent receives an observation
+$o_t=(s_t, r_t)$, where $s_t\in\mathbb{R}^{d}$ is a vector of $d$ numeric sensor
+readings and $r_t$ is an optional free-text report. The agent chooses an action
+$a_t$ either from a finite set $\mathcal{A}=\{a_1,\dots,a_K\}$ of $K$ registered
+tools or from three control actions: \emph{gather} more evidence,
+\emph{abstain}, or \emph{escalate} to a human operator. The environment returns
+a reward $R_t$, and the aim is to learn a policy $\pi(a\mid o)$ that maximises
+the expected episode return $\mathbb{E}\big[\sum_{t=1}^{T}R_t\big]$ under three
+operational requirements: (i) the policy must run without any network access;
+(ii) it must fit within the memory and computing budget of a low-cost board;
+and (iii) it must recognise when its own decision should not be trusted. In
+CONCLAVE, $\pi$ is realised by a committee of $M$ classical classifiers, and
+the confidence of the policy is estimated from their agreement.
 
-\section{Experimental Setup}
-All experiments run on a 2-core x86\_64 Linux container with $3.82$\,GB RAM
---- itself close to a Raspberry Pi profile --- with seeds fixed at $42$ and full
-provenance recorded in every result artefact. Software: scikit-learn
-$1.7.2$~\cite{pedregosa2011sklearn}, LightGBM $4.7.0$~\cite{ke2017lightgbm},
-NumPy $2.2.6$.
+\subsection{Data collection}\label{sec:data}
+The framework is evaluated on four test beds, summarised in
+Table~\ref{tab:datasets}. Each test bed isolates one capability that an
+offline agent needs, so that each capability can be measured on its own. Two
+of them are public datasets. BFCL~v3 pairs each user request with the
+specifications of several candidate tools (functions); the agent must pick the
+tool that serves the request, or recognise that none does. HumAID contains
+tweets posted during real disasters, each labelled with one of ten
+humanitarian categories, such as \emph{requests or urgent needs} and
+\emph{infrastructure and utility damage}; the agent must sort each message into
+its category. The other two test beds were built for this study, because no
+public dataset measures what they measure: a flood-response simulator tests
+decisions over time while the network fails, and emulated hardware profiles
+test whether the agent fits, and runs fast enough, on low-cost boards
+(Table~\ref{tab:boards}).
 
 \begin{table}[t]
 \centering
-\caption{Benchmarks and what each isolates.}
+\caption{The four test beds. Two are public datasets and two were built for
+this study; each isolates one capability.}
 \label{tab:datasets}
-\small
-\begin{tabular}{@{}lll@{}}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{3.85cm}>{\raggedright\arraybackslash}p{2.55cm}@{}}
 \toprule
-Benchmark & Size & Capability isolated \\
+Test bed & What is used & Capability tested \\
 \midrule
-BFCL v3~\cite{patil2024bfcl}   & 1{,}700 functions & tool routing, abstention \\
-HumAID~\cite{alam2021humaid}   & 76{,}484 tweets   & crisis perception \\
-Flood-response sim             & 40-step episodes  & sequential control \\
-Edge profiles                  & 5 boards          & resource cost \\
+BFCL v3 \newline (public dataset) & 1{,}252 requests, each offering two or more candidate tools (3.8 on average); 2{,}628 requests for abstention, 43\% of which no tool fits & Choosing the right tool, or declining when none fits (Sec.~\ref{sec:routing}) \\
+\addlinespace
+HumAID \newline (public dataset) & 76{,}484 tweets in 10 humanitarian categories, with the authors' train/validation/test split & Sorting crisis messages by category (Sec.~\ref{sec:humaid}) \\
+\addlinespace
+Flood simulator \newline (built here) & 40-step episodes in 6 outage settings, with the network down for 0--73\% of steps; 120 test episodes per setting & Acting over time while the network is down (Sec.~\ref{sec:sequential}) \\
+\addlinespace
+Edge profiles \newline (built here) & The host machine and 4 emulated boards with 512\,MB to 4\,GB of RAM, from a Raspberry Pi Zero 2\,W to a Jetson Nano & Fitting and running fast on small hardware (Sec.~\ref{sec:cost}) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-We note one discarded dataset, because the reason generalises. A widely-used
-Bangladesh flood-prediction dataset gives $99.6\%$ accuracy under a standard
-ensemble --- but a depth-1 decision stump on rainfall alone scores $98.4\%$,
-and $92\%$ of rows are positive. Its ``Flood?'' label is essentially a rainfall
-threshold, so any model recovers it and the benchmark measures nothing. We
-report this because such labels are common in applied disaster-ML papers and
-are rarely audited.
-
-\section{Results}
-
-\subsection{Tool routing and abstention}
 \begin{table}[t]
 \centering
-\caption{Tool routing on BFCL v3. Latency is per single decision, not
-amortised over a batch.}
+\caption{Emulated hardware profiles. Relative throughput $\rho$ is the
+approximate single-core speed of each board relative to the host, taken from
+vendor and published figures; it is used only to estimate on-device latency.}
+\label{tab:boards}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Profile & Cores & RAM & Clock (MHz) & $\rho$ & TDP (W) \\
+\midrule
+Host (x86-64)          & 2 & 3.8\,GB & --- & 1.00 & 15.0 \\
+Jetson Nano            & 4 & 4\,GB & 1{,}430 & 0.26 & 10.0 \\
+Raspberry Pi 4B        & 4 & 4\,GB & 1{,}500 & 0.28 & 6.4 \\
+Raspberry Pi 3B+       & 4 & 1\,GB & 1{,}400 & 0.17 & 5.0 \\
+Raspberry Pi Zero 2 W  & 4 & 512\,MB & 1{,}000 & 0.11 & 2.5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Data preprocessing and engineering}\label{sec:prep}
+\textit{1) BFCL.} Each BFCL record contains a user request and a list of
+candidate function specifications in JSON format, and the ground-truth call is
+stored in a separate file. We join each request with the name of its
+ground-truth function, keep only the user turns of the conversation, and remove
+requests whose gold function is not among the candidates or which offer fewer
+than two candidates. This gives 200 requests from the \texttt{multiple} split
+and 1{,}052 from the \texttt{live\_multiple} split (1{,}252 in total), with 2 to
+37 candidate tools per request and 3.8 on average. Each request is expanded into
+(request, tool) pairs, labelled 1 for the gold tool and 0 otherwise. The data
+are split by request (70\% for training and 30\% for testing) and never by
+pair, so that no request appears on both sides. To test generalisation to new
+tools, we also build an \emph{unseen-tool} split: one third of the tools of
+\texttt{live\_multiple} (68 tools) are held out, test requests target only
+held-out tools, and training requests never contain them. For abstention,
+1{,}118 irrelevant requests from the two irrelevance splits are combined with
+1{,}510 relevant requests, giving 2{,}628 cases ($42.5\%$ irrelevant), which are
+split 70/30 with stratification.
+
+\textit{2) HumAID.} HumAID provides the authors' official training, validation
+and test sets of 53{,}531, 7{,}793 and 15{,}160 tweets. We keep this split, so
+that our results can be compared directly with the baselines reported by the
+dataset authors. The text is lower-cased and accents are removed; word tokens
+are extracted with a regular expression for words of at least two characters,
+and character n-grams are taken within word boundaries. No tweet is removed,
+and the ten class labels are encoded as integers. The class distribution is
+highly imbalanced: the largest class (\emph{rescue, volunteering or donation
+effort}) has 14{,}891 training tweets, whereas the smallest (\emph{missing or
+found people}) has only 250. For this reason, both weighted and macro F1 are
+reported.
+
+\textit{3) Simulator data.} The training data of the flood agent are generated
+by an expert controller (Section~\ref{sec:sim}) that can see the hidden flood
+risk. We run 160 episodes of 40 steps with different random seeds and record,
+at every step, the agent's noisy observation together with the expert's
+action. This gives 6{,}400 labelled decisions for behaviour cloning. The
+sensor readings are corrupted by multiplicative Gaussian noise with a standard
+deviation of $6\%$, and every observation contains a short field report whose
+wording depends on the true risk. A further 60 episodes (2{,}400 decisions)
+with unseen seeds form the test set for one-step accuracy, and 120 episodes
+with unseen seeds are used for closed-loop evaluation.
+
+\textit{4) Edge profiles.} For each profile in Table~\ref{tab:boards}, the
+number of CPU threads is limited to the board's core count and, where the
+operating system allows, the process address space is limited to the board's
+RAM. On-device latency is then estimated as described in
+Section~\ref{sec:metrics}.
+
+\textit{5) Data quality check.} Before selecting the test beds, we audited a
+widely used Bangladesh flood-prediction dataset. A standard ensemble reaches
+$99.6\%$ accuracy on it, but a depth-1 decision stump on rainfall alone scores
+$98.4\%$, and $92\%$ of the rows are positive. Its ``Flood?'' label is therefore
+essentially a rainfall threshold, and any model can recover it. Since such a
+benchmark cannot separate a good model from a trivial one, it was not used.
+
+\subsection{Feature extraction}\label{sec:features}
+\textit{Hashed text features.} A report $r$ is converted into a multiset
+$\mathcal{G}(r)$ of word n-grams ($n=1,2$) or character n-grams ($n=3,4,5$).
+Instead of storing a vocabulary, every n-gram $g$ is mapped directly to a column
+by the hashing trick:
+\begin{equation}
+j(g)=\big|h(g)\big| \bmod D, \qquad
+c_j(r)=\sum_{g\in\mathcal{G}(r)}\mathbb{I}\big[j(g)=j\big],
+\label{eq:hash}
+\end{equation}
+where $h$ is the 32-bit MurmurHash3 function, $D=2^{b}$ is the number of hash
+buckets, $c_j(r)$ is the number of n-grams of $r$ that fall into bucket $j$,
+and $\mathbb{I}[\cdot]$ is the indicator function. Separate spaces of $D_w$
+buckets (words) and $D_c$ buckets (characters) are used. The counts are then
+re-weighted by sublinear term frequency and inverse document frequency (TF--IDF):
+\begin{equation}
+\tilde{u}_j(r)=\big(1+\ln c_j(r)\big)\,\mathrm{idf}_j,\qquad
+\mathrm{idf}_j=\ln\frac{1+N}{1+\mathrm{df}_j}+1,
+\label{eq:tfidf}
+\end{equation}
+for $c_j(r)>0$ and $\tilde{u}_j(r)=0$ otherwise, where $N$ is the number of
+training documents and $\mathrm{df}_j$ is the number of training documents in
+which bucket $j$ is non-zero. Each vector is normalised to unit length,
+$u(r)=\tilde{u}(r)/\|\tilde{u}(r)\|_2$. Because there is no stored vocabulary,
+the featuriser keeps only the two $\mathrm{idf}$ vectors and its size is fixed
+by $D_w$ and $D_c$. A conventional fitted vocabulary on HumAID would occupy
+about $98$\,MB, whereas the hashed featuriser is constant-size and is tuned by a
+single parameter $b$, which we sweep in Section~\ref{sec:humaid}.
+
+\textit{Sensor features.} Each sensor reading is standardised with the mean
+$\mu_i$ and standard deviation $\sigma_i$ of the training data,
+\begin{equation}
+z_i(s)=\frac{s_i-\mu_i}{\sigma_i},\qquad i=1,\dots,d,
+\label{eq:zscore}
+\end{equation}
+with $\sigma_i=1$ for a constant feature. The final feature vector concatenates
+the two views:
+\begin{equation}
+\mathbf{x}_t=\phi(o_t)=\big[\,z(s_t)\,;\;u^{w}(r_t)\,;\;u^{c}(r_t)\,\big]
+\in\mathbb{R}^{\,d+D_w+D_c}.
+\label{eq:fusion}
+\end{equation}
+For the flood agent, $d=12$ and $D_w=D_c=2^{13}$, which gives $16{,}396$
+features; for HumAID, only the text view is used, with $D_w=D_c\in\{2^{12},
+2^{14},2^{16}\}$.
+
+\textit{Pairwise ranking features.} For tool routing, a request $q$ and a tool
+$\tau$ are described jointly by an 11-dimensional vector $\varphi(q,\tau)$. The
+tool text concatenates the tool's name, its description, and the names and
+descriptions of its parameters. The features are: (1) word TF--IDF similarity
+between the request and the tool text; (2) character TF--IDF similarity; (3) the
+fraction of request tokens found in the tool text; (4) the fraction of tool
+tokens found in the request; (5) the fraction of tool-name tokens found in the
+request; (6) the number of required parameters; (7) the number of parameters;
+(8) the length of the tool text; (9) the fraction of parameter names mentioned
+in the request; (10) the fraction of required parameter names mentioned; and
+(11) the number of request tokens. The TF--IDF vectorisers of the router use
+word 1--2-grams (with English stop words removed) and character 3--4-grams.
+Since a tool's text does not change between requests, its vectors are
+computed once and cached, so routing a request costs one vectorisation of the
+request and a few sparse dot products.
+
+\subsection{Machine learning models of the committee}\label{sec:models}
+CONCLAVE uses committees of \emph{deliberately heterogeneous} members, because
+the disagreement of the members is meaningful only if they can disagree for
+structural reasons~\cite{dietterich2000ensemble}. A random forest's trees share
+an inductive bias, so their disagreement tends to collapse on unfamiliar data;
+mixing linear, margin-based, generative and tree-based models keeps the
+disagreement signal informative. All members are implemented with
+scikit-learn~\cite{pedregosa2011sklearn} and LightGBM~\cite{ke2017lightgbm}.
+
+\textit{Logistic regression (LR).} A multinomial linear model:
+\begin{equation}
+p_{\mathrm{LR}}(a_k\mid\mathbf{x})=
+\frac{\exp\!\big(\mathbf{w}_k^{\top}\mathbf{x}+b_k\big)}
+{\sum_{j=1}^{K}\exp\!\big(\mathbf{w}_j^{\top}\mathbf{x}+b_j\big)},
+\label{eq:lr}
+\end{equation}
+where $\mathbf{w}_k$ and $b_k$ are the weight vector and bias of action $a_k$.
+The parameters minimise the cross-entropy loss plus an $L_2$ penalty with
+inverse regularisation strength $C=4$, using L-BFGS for at most 400 iterations.
+
+\textit{Stochastic gradient descent with modified Huber loss (SGD).} A
+one-vs-rest linear model with scores $f_k(\mathbf{x})=\mathbf{w}_k^{\top}\mathbf{x}+b_k$,
+trained by stochastic gradient descent on the loss
+\begin{equation}
+L(y,f)=
+\begin{cases}
+\max(0,\,1-yf)^2, & yf\geq-1,\\
+-4yf, & \text{otherwise},
+\end{cases}
+\label{eq:huber}
+\end{equation}
+with label $y\in\{-1,+1\}$, an $L_2$ penalty $\alpha=10^{-5}$ and 25 epochs.
+Its class probabilities are
+$p_{\mathrm{SGD}}(a_k\mid\mathbf{x})\propto\tfrac12\big(\mathrm{clip}(f_k(\mathbf{x}),-1,1)+1\big)$,
+normalised to sum to one.
+
+\textit{Naive Bayes (NB).} A generative model. For the non-negative TF--IDF
+features of HumAID we use complement naive Bayes,
+$\ln p_{\mathrm{NB}}(a_k\mid\mathbf{x})\propto-\sum_j x_j\ln\bar\theta_{kj}$,
+where $\bar\theta_{kj}$ is the smoothed relative frequency of feature $j$ in all
+classes \emph{except} $a_k$. The flood features contain negative standardised
+values, so Bernoulli naive Bayes is used on binarised features
+$\beta_j=\mathbb{I}[x_j>0]$:
+\begin{equation}
+\begin{aligned}
+\ln p_{\mathrm{NB}}(a_k\mid\mathbf{x})={}&\ln\pi_k-\ln Z\\
+&+\sum_{j}\Big[\beta_j\ln\theta_{kj}+(1-\beta_j)\ln(1-\theta_{kj})\Big],
+\end{aligned}
+\label{eq:nb}
+\end{equation}
+where $\pi_k$ is the prior of action $a_k$,
+$\theta_{kj}=(n_{kj}+\alpha)/(n_k+2\alpha)$ is the smoothed probability that
+feature $j$ is active for action $a_k$ ($n_{kj}$ active counts among $n_k$
+training examples, $\alpha=0.3$), and $Z$ normalises the probabilities.
+
+\textit{LightGBM.} A gradient-boosted ensemble of decision
+trees~\cite{ke2017lightgbm},
+\begin{equation}
+F_T(\mathbf{x})=F_0+\sum_{m=1}^{T}\eta\,f_m(\mathbf{x}),
+\label{eq:gbdt}
+\end{equation}
+where each tree $f_m$ is grown leaf-wise to fit the negative gradient of the
+loss, $\eta$ is the learning rate and $T$ the number of trees ($T=200$,
+$\eta=0.08$ and 31 leaves for the router). The output score is converted to a
+probability by the logistic function.
+
+\textit{Random forest (RF).} An average of $B$ decision trees, each trained on
+a bootstrap sample with random feature subsets~\cite{breiman2001randomforest}:
+\begin{equation}
+p_{\mathrm{RF}}(a\mid\mathbf{x})=\frac{1}{B}\sum_{b=1}^{B}p_b(a\mid\mathbf{x}),
+\label{eq:rf}
+\end{equation}
+with $B=60$ trees of maximum depth 10 and at least four samples per leaf in
+the router.
+
+Two committees are used. The \emph{decision committee}, used for the flood
+agent and for HumAID, contains LR, SGD and NB; all three are linear in the
+features, which makes the committee small and fast. The \emph{ranking
+committee}, used for tool routing, contains LightGBM, RF and LR.
+
+\subsection{Ensemble aggregation}\label{sec:aggregation}
+The members' posteriors are combined by soft voting:
+\begin{equation}
+\bar{p}(a\mid\mathbf{x})=\sum_{m=1}^{M}w_m\,p_m(a\mid\mathbf{x}),
+\qquad w_m\geq0,\quad\sum_{m=1}^{M}w_m=1,
+\label{eq:vote}
+\end{equation}
+where $p_m$ is the posterior of member $m$ and $w_m$ its weight. In all reported
+agents we use uniform weights, $w_m=1/M$. The framework also supports weights
+learnt from out-of-fold log-loss,
+\begin{equation}
+w_m=\frac{\ell_m-\min_i\ell_i+\epsilon}{\sum_{j=1}^{M}\big(\ell_j-\min_i\ell_i+\epsilon\big)},
+\qquad
+\ell_m=-\frac{1}{F}\sum_{f=1}^{F}\mathrm{LL}_m^{(f)},
+\label{eq:weights}
+\end{equation}
+where $\mathrm{LL}_m^{(f)}$ is the log-loss of member $m$ on fold $f$ of an
+$F=3$-fold stratified split and $\epsilon=10^{-6}$; the effect of this choice is
+analysed in Section~\ref{sec:ablation}. When episodic memory is enabled, its
+prior $\pi_t$ (Section~\ref{sec:memory}) is blended with the committee:
+\begin{equation}
+p_t(a)=(1-\lambda)\,\bar{p}_t(a)+\lambda\,\pi_t(a),
+\label{eq:blend}
+\end{equation}
+with blending weight $\lambda=0.25$. The selected tool is
+$a^\ast_t=\arg\max_{a}p_t(a)$.
+
+\subsection{Uncertainty decomposition}\label{sec:uncertainty}
+For one observation, let $\tilde{p}=\frac{1}{M}\sum_{m}p_m$ be the plain mean
+of the member posteriors over the $K$ actions, and let
+$H[p]=-\sum_{k=1}^{K}p_k\ln p_k$ be the Shannon entropy. Following the standard
+entropy-based formulation~\cite{hullermeier2021aleatoric}, the total
+uncertainty is split into two parts:
+\begin{equation}
+U^{\mathrm{tot}}=\frac{H[\tilde{p}]}{\ln K}=U^{\mathrm{ale}}+U^{\mathrm{epi}},
+\label{eq:decomp}
+\end{equation}
+\begin{equation}
+U^{\mathrm{ale}}=\frac{1}{M\ln K}\sum_{m=1}^{M}H[p_m],\qquad
+U^{\mathrm{epi}}=U^{\mathrm{tot}}-U^{\mathrm{ale}},
+\label{eq:decomp2}
+\end{equation}
+where division by $\ln K$ scales every term to $[0,1]$. The aleatoric part
+$U^{\mathrm{ale}}$ is the average entropy of the members: it is high when the
+members \emph{agree} that the situation is ambiguous, so more sensing will not
+help and the agent should abstain. The epistemic part $U^{\mathrm{epi}}$ is the
+mutual information between the prediction and the member index, i.e.\ the
+members' \emph{disagreement}: it is high when the agent is outside its
+competence, and it should gather evidence or escalate. Two further statistics
+are used,
+\begin{equation}
+c=\max_k\tilde{p}_k,\qquad \delta=\tilde{p}_{(1)}-\tilde{p}_{(2)},
+\label{eq:conf}
+\end{equation}
+the confidence and the margin, where $\tilde{p}_{(1)}$ and $\tilde{p}_{(2)}$ are
+the two largest probabilities. A single model cannot separate the two kinds of
+uncertainty without expensive sampling; a committee obtains them from one
+forward pass.
+
+\subsection{Uncertainty gate and threshold calibration}\label{sec:gate}
+The gate maps these statistics to a control decision. The order of the checks
+encodes a safety policy:
+\begin{equation}
+g=
+\begin{cases}
+\text{gather (or escalate)}, & U^{\mathrm{epi}}>\tau_e,\\
+\text{abstain}, & U^{\mathrm{ale}}>\tau_a,\\
+\text{gather (or escalate)}, & c<\tau_c\ \text{or}\ \delta<\tau_\delta,\\
+\text{act}, & \text{otherwise},
+\end{cases}
+\label{eq:gate}
+\end{equation}
+where $\tau_e$, $\tau_a$, $\tau_c$ and $\tau_\delta$ are the epistemic, aleatoric,
+confidence and margin thresholds. ``Gather'' is used when the agent has an
+evidence-gathering action; otherwise the decision is escalated to a human.
+
+The thresholds $\tau_c$ and $\tau_e$ are not chosen by hand. They are
+calibrated on a held-out validation set $V$ by selective
+prediction~\cite{elyaniv2010selective,geifman2017selectivenet}: among all
+threshold pairs, we choose the one that accepts the most decisions while the
+accuracy of the accepted decisions meets a target precision $\pi^\ast$,
+\begin{equation}
+(\tau_c^\ast,\tau_e^\ast)=\arg\max_{\tau_c,\tau_e}\frac{|\mathcal{S}|}{|V|}
+\ \ \text{s.t.}\ \ \frac{1}{|\mathcal{S}|}\sum_{i\in\mathcal{S}}\mathbb{I}[\hat{y}_i=y_i]\geq\pi^\ast,
+\label{eq:calib}
+\end{equation}
+where $\mathcal{S}=\{i\in V: c_i\geq\tau_c,\ U^{\mathrm{epi}}_i\leq\tau_e\}$ is the
+set of accepted decisions, $\hat{y}_i$ and $y_i$ are the predicted and true
+labels, and $|\mathcal{S}|\geq0.05|V|$. The search uses a grid of 24 values of
+$\tau_c\in[0,0.95]$ and 24 values of $\tau_e\in[0.02,0.80]$, with
+$\pi^\ast=0.90$; $\tau_a=0.60$ and $\tau_\delta=0.10$ are fixed.
+
+\subsection{Open-vocabulary tool routing and abstention}\label{sec:router}
+Instead of classifying a request into a fixed set of tool labels, the router
+scores \emph{(request, tool) pairs}. For a request $q$ with candidate tools
+$\mathcal{T}(q)$, the score of tool $\tau$ is the mean probability, over the
+$M$ members of the ranking committee, that $\tau$ is the correct tool:
+\begin{equation}
+\begin{aligned}
+s(q,\tau)&=\frac{1}{M}\sum_{m=1}^{M}P_m\big(y=1\mid\varphi(q,\tau)\big),\\
+\tau^\ast&=\arg\max_{\tau\in\mathcal{T}(q)}s(q,\tau).
+\end{aligned}
+\label{eq:route}
+\end{equation}
+Because the router scores pairs, a tool registered after training is scored
+by the same features as any other, so the agent gains new capabilities without
+retraining. For the uncertainty decomposition, each member's scores are
+normalised over the candidates,
+$\tilde{P}_m(\tau\mid q)=P_m(y=1\mid\varphi(q,\tau))/\sum_{\tau'}P_m(y=1\mid\varphi(q,\tau'))$,
+and Eq.~\eqref{eq:decomp} is applied. Abstention --- deciding that no candidate
+tool applies --- is a separate binary task. Its ten features summarise the
+distribution of pair features over the candidates (the maximum, mean, spread
+and standard deviation of the word similarity, the maximum and mean coverage,
+the maximum and mean parameter overlap, the number of candidates and the
+request length), and a committee of a random forest, extra trees and LR
+predicts whether the request is irrelevant; the agent abstains when the mean
+probability exceeds $0.5$.
+
+\subsection{Episodic memory}\label{sec:memory}
+An LLM agent adapts to a new situation by placing examples in its prompt.
+CONCLAVE instead keeps a bounded store of past cases
+$(\mathbf{k}_i,a_i,\varrho_i)$, where $\mathbf{k}_i$ is a key derived from the
+feature vector (a fixed random projection to 512 dimensions when the vector is
+longer), $a_i$ is the action taken and $\varrho_i$ the reward received. For a
+query key $\mathbf{k}$, the $n=5$ nearest cases by cosine distance form the set
+$\mathcal{N}(\mathbf{k})$, and the memory prior is
+\begin{equation}
+\pi(a\mid\mathbf{k})\propto\sum_{i\in\mathcal{N}(\mathbf{k}),\;a_i=a,\;\varrho_i>0}
+\mathrm{sim}(\mathbf{k},\mathbf{k}_i)\,\varrho_i,
+\label{eq:memory}
+\end{equation}
+where $\mathrm{sim}=1-d_{\cos}$; the prior is uniform when no positive case is
+found. The store holds at most 2{,}000 cases; when it is full, the case with
+the lowest utility $\varrho_i+0.1\,u_i$ is removed, where $u_i$ is the number of
+times the case has been retrieved. This is the case-based-reasoning component
+proposed conceptually for flood early warning~\cite{rashid2024integrating}, at a
+cost of kilobytes and microseconds.
+
+\subsection{Planner and safety constraints}\label{sec:constraints}
+The committee decides \emph{what} the situation requires; a symbolic planner
+decides \emph{in which order} to act when a goal needs several tools. Each tool
+declares preconditions and effects as sets of predicates. The planner performs
+an A$^\ast$ forward search over states $S$ (sets of true predicates), ordering
+nodes by
+\begin{equation}
+f(n)=g(n)+h(n),\qquad h(n)=\big|G\setminus S_n\big|,
+\label{eq:astar}
+\end{equation}
+where $g(n)$ is the total cost of the tools on the path to node $n$, $S_n$ is
+its state, $G$ is the set of goal predicates, and $h(n)$ counts the unmet goal
+predicates. Applying a tool adds its effects, $S'=S\cup\mathrm{eff}(\tau)$. The
+search is bounded by a depth of 8 and 5{,}000 expansions, so termination is
+guaranteed. The heuristic is admissible, and the plan therefore cost-optimal,
+when every tool adds at most one goal predicate at a cost of at least one; the
+shipped disaster tools satisfy this condition.
+
+Finally, a constraint layer sits \emph{above} the learned policy. Each
+constraint is a predicate $C_j(a,o)$ that is checked after the gate and before
+execution --- for example, irreversible tools such as opening a sluice gate
+require a confidence of at least $\kappa$, and a tool may be fired only a limited
+number of times per episode. If any constraint is violated, the action is
+converted into an escalation and the reason is recorded; a rule that fails to
+evaluate is treated as violated. Thus, no statistical model can authorise an
+irreversible act on its own.
+
+\subsection{Decision loop of the agent}\label{sec:loop}
+Algorithm~\ref{alg:loop} and Fig.~\ref{fig:agent} summarise how the
+components work together at every time step. Every stage is a bounded amount
+of arithmetic, so a decision has a fixed worst-case cost, and no stage needs
+the network.
+
+\begin{algorithm}[t]
+\caption{Decision loop of a CONCLAVE agent}
+\label{alg:loop}
+\small
+\textbf{Input:} featuriser $\phi$; committee $\{p_m,w_m\}_{m=1}^{M}$;
+thresholds $\tau_c,\tau_\delta,\tau_e,\tau_a$; memory $\mathcal{M}$ (optional);
+constraints $\{C_j\}$; tool registry.\\
+\textbf{Output:} an audited action $a_t$ at every step $t$.
+\begin{enumerate}
+\item Receive the observation $o_t=(s_t,r_t)$.
+\item Compute the features $\mathbf{x}_t=\phi(o_t)$ by Eqs.~\eqref{eq:hash}--\eqref{eq:fusion}.
+\item For $m=1,\dots,M$, compute the member posterior $p_m(\cdot\mid\mathbf{x}_t)$.
+\item Aggregate $\bar{p}_t$ by Eq.~\eqref{eq:vote}; if $\mathcal{M}$ is not
+      empty, blend it with the memory prior by Eq.~\eqref{eq:blend}.
+\item Compute $U^{\mathrm{ale}}_t$, $U^{\mathrm{epi}}_t$, $c_t$ and $\delta_t$ by
+      Eqs.~\eqref{eq:decomp}--\eqref{eq:conf}.
+\item Apply the gate of Eq.~\eqref{eq:gate}. If the outcome is \emph{act}, set
+      $a_t=\arg\max_a p_t(a)$; otherwise set $a_t$ to the gate outcome.
+\item If any constraint $C_j(a_t,o_t)$ is violated, set $a_t$ to
+      \emph{escalate} and record the reason.
+\item Execute $a_t$ through the registry; for multi-step goals, order the
+      tools with the planner of Eq.~\eqref{eq:astar}.
+\item Receive the reward $R_t$; if $a_t$ is a tool and $R_t>0$, store the case
+      $(\mathbf{k}_t,a_t,R_t)$ in $\mathcal{M}$.
+\end{enumerate}
+\end{algorithm}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_agent.pdf}
+\caption{Decision pipeline of a CONCLAVE agent at one time step. The committee
+posterior is decomposed into aleatoric and epistemic uncertainty, and the gate
+chooses one of four outcomes; the constraint layer can still convert an action
+into an escalation before execution.}
+\label{fig:agent}
+\end{figure}
+
+\subsection{Flood-response simulator}\label{sec:sim}
+Classification benchmarks cannot show whether a framework behaves well as an
+\emph{agent}, because they have no sequence of decisions. We therefore built a
+discrete-time flood-response environment in which the agent operates a river
+district for $T=40$ steps and chooses among six tools: \emph{monitor},
+\emph{issue alert}, \emph{evacuate zone}, \emph{deploy rescue}, \emph{request
+supplies} and \emph{open sluice} (irreversible). Decisions compound: early
+evacuation costs resources but saves lives if the flood arrives, and false
+alarms reduce the credibility of later warnings.
+
+\textit{Dynamics.} Each episode draws an initial river level
+$\ell_0\sim\mathcal{U}(1,2)$\,m, initial rainfall $\rho_0\sim\mathcal{U}(0,4)$,
+a surge time $t_s$ uniformly between step 8 and step $T-9$, and a surge
+magnitude $S\sim\mathcal{U}(2.5,6)$\,m. Rainfall and river level evolve as
+\begin{align}
+\rho_{t+1}&=\mathrm{clip}\big(\rho_t+\varepsilon_t+3\cdot\mathbb{I}[|t-t_s|<3],\;0,\;20\big),\label{eq:rain}\\
+\ell_{t+1}&=\mathrm{clip}\big(\ell_t+0.11\,\rho_{t+1}-d_t+S\cdot\mathbb{I}[t=t_s],\;0.4,\;14\big),\label{eq:level}
+\end{align}
+where $\varepsilon_t\sim\mathcal{N}(0,1.2^2)$ and the drainage $d_t$ is $0.45$
+when the sluice is open and $0.22$ otherwise. When the level exceeds 4.5\,m, a
+fraction $0.05\min\{(\ell_{t+1}-4.5)/3,\,1\}$ of the population that has not
+been evacuated becomes stranded, and $3\%$ of the stranded people become
+casualties at every step until they are rescued. The hidden flood risk, which
+the agent never observes, is
+\begin{equation}
+\varrho_t=\min\big\{1,\;0.65\,\chi_t+0.35\,\sigma(\ell_t-4)\big\},
+\label{eq:risk}
+\end{equation}
+where $\chi_t=e^{-(t_s-t)/4}$ for $t\leq t_s$ and $\chi_t=1$ afterwards, and
+$\sigma$ is the logistic function.
+
+\textit{Observations.} The agent sees 12 sensor values --- river level,
+rainfall and level change (with $6\%$ multiplicative noise), elapsed time,
+available boats and supplies, evacuated fraction, number of stranded people,
+public credibility, warning and sluice status, and the connectivity flag ---
+and a field report chosen from risk-dependent templates; for example, a risk
+above $0.75$ produces reports such as ``urgent people trapped on rooftops need
+boats immediately''.
+
+\textit{Reward.} An alert issued when $\varrho_t>0.45$ earns $+3$, otherwise it
+costs $4$ and reduces credibility by $0.15$; evacuation earns
+$0.02\,\varrho_t$ per person moved minus a cost of 2; a rescue earns $0.12$ per
+person saved (an ineffective rescue costs 1); requesting supplies costs $0.5$; opening the sluice costs 5 for
+farm damage and earns 12 if $\varrho_t>0.6$; monitoring costs $0.05$; an
+escalation costs $0.4$ and gathering or abstaining $0.15$. Each new casualty
+costs $0.35$, and at the end of the episode the agent receives
+$+0.005$ per evacuated person, $-0.2$ per casualty and $-0.05$ per unit of farm
+damage. The episode return is $G=\sum_{t=1}^{T}R_t$.
+
+\textit{Connectivity.} At every step with a working network, an outage starts
+with probability $q$ and lasts six steps. We use
+$q\in\{0,0.1,0.2,0.3,0.4,0.5\}$, which leaves the network down for $0\%$,
+$35.3\%$, $53.0\%$, $62.3\%$, $68.6\%$ and $73.1\%$ of the steps, respectively.
+
+\textit{Expert controller.} The training labels come from a rule-based expert
+that sees the true risk: it deploys rescue if more than five people are
+stranded and boats are available; opens the sluice if $\varrho_t>0.8$ and the
+level exceeds 5\,m; issues an alert if $\varrho_t>0.55$ and no warning has been
+issued; evacuates if $\varrho_t>0.6$ and less than $70\%$ of the population has
+left; requests supplies if boats or supplies run low; and otherwise monitors.
+
+\subsection{NumPy-only edge runtime}\label{sec:runtime}
+Training needs scikit-learn and SciPy, but deciding does not. Every member of
+the decision committee is linear in the features, so a decision needs only the
+hash function of Eq.~\eqref{eq:hash}, the TF--IDF weights of
+Eq.~\eqref{eq:tfidf}, and a few matrix--vector products. The export step
+writes the fitted featuriser, the members' weights and the gate thresholds
+into a single compressed NumPy file. Hash buckets that never occurred in the
+training data carry exactly zero weight in LR and SGD and a constant
+contribution in NB, so only the columns seen in training are stored. The
+runtime is a single Python file that imports nothing except NumPy and the
+standard library; it re-implements MurmurHash3, the n-gram analysers, the
+member posteriors, Eqs.~\eqref{eq:vote}--\eqref{eq:conf} and the gate. The
+deployment on a board is therefore two files: the runtime and the exported
+agent.
+
+\subsection{Compared agents and baselines}\label{sec:baselines}
+\textit{Agents for sequential control.} All agents act in the same simulator
+episodes. (i) A \emph{cloud agent} follows the expert controller with access to
+the true risk; it represents the upper bound of a remote LLM-based agent, since
+no real language model would act better than the expert that generated the
+labels. When the network is down it cannot act, and a \emph{cache} variant
+repeats its last action instead. (ii) \emph{Static threshold rules} act on the
+gauge (evacuate above 5.5\,m, alert above 4.0\,m), as a typical fielded system
+does. (iii) A \emph{random} policy gives the lower bound. (iv) Eight other
+\emph{machine-learning-based agents} are trained on exactly the same 6{,}400
+decisions and features as CONCLAVE: a case-based-reasoning agent ($k$-NN with
+$k=5$ and cosine distance, as in CBR systems~\cite{rashid2024integrating}); a
+single decision tree; Bernoulli naive Bayes; logistic regression; a multilayer
+perceptron (one hidden layer of 64 ReLU units, Adam, 60 epochs); a random forest
+(100 trees); LightGBM (200 trees, 63 leaves); and a \emph{hard-vote ensemble}
+of the multilayer perceptron, the random forest and $k$-NN, which follows the
+majority-vote design of ensemble flood-warning
+frameworks~\cite{sen2026context}.
+
+\textit{Baselines for routing and triage.} For tool routing, a lexical router
+selects the tool with the highest word TF--IDF similarity, without any
+learning, and single-model rankers (LR, RF, LightGBM) are compared with the
+ranking committee. For HumAID, we compare with the transformer and classical
+baselines reported by the dataset authors on the same split, and with single
+LR, SGD and NB classifiers trained on our features.
+
+\subsection{Evaluation metrics}\label{sec:metrics}
+Tool routing is measured by top-1 accuracy,
+$\mathrm{Acc}=\frac{1}{N}\sum_{i=1}^{N}\mathbb{I}[\hat{\tau}_i=\tau_i]$, and
+abstention by accuracy, F1 and the area under the ROC curve (AUC). Crisis triage
+is measured by the weighted and macro F1 scores,
+\begin{equation}
+\begin{aligned}
+\mathrm{F1}_k&=\frac{2P_kR_k}{P_k+R_k},\\
+\mathrm{F1}_{w}&=\sum_{k=1}^{K}\frac{n_k}{N}\,\mathrm{F1}_k,\qquad
+\mathrm{F1}_{m}=\frac{1}{K}\sum_{k=1}^{K}\mathrm{F1}_k,
+\end{aligned}
+\label{eq:f1}
+\end{equation}
+where $n_k$ is the number of test examples of class $k$, and $P_k$ and $R_k$ are
+its precision and recall. Sequential control is measured by the mean episode
+return $\bar{G}$ and the mean number of casualties over 120 episodes. Two agents
+$A$ and $B$ are compared on the \emph{same} episode seeds by the paired
+difference
+\begin{equation}
+\Delta=\frac{1}{n}\sum_{i=1}^{n}\big(G_i^{A}-G_i^{B}\big),
+\label{eq:paired}
+\end{equation}
+whose $95\%$ confidence interval is obtained from 4{,}000 bootstrap resamples
+of the episodes; a difference is significant when the interval excludes zero.
+The quality of uncertainty is measured by the area under the accuracy--coverage
+curve (AURC) and by the AUROC for separating clean from shifted observations.
+
+Latency is the median and the 99th percentile (p99) of single decisions, taken
+from the quietest of five trials. Since we do not have the physical boards,
+on-device latency and energy are estimated from the host measurement,
+\begin{equation}
+\hat{t}_{\mathrm{dev}}=\frac{t_{\mathrm{host}}}{\rho_{\mathrm{dev}}},\qquad
+\hat{E}_{\mathrm{dev}}=\hat{t}_{\mathrm{dev}}\,P_{\mathrm{dev}},
+\label{eq:estimate}
+\end{equation}
+where $\rho_{\mathrm{dev}}$ and $P_{\mathrm{dev}}$ are the relative throughput and
+the thermal design power of the board (Table~\ref{tab:boards}). Memory is the
+peak resident set size of a fresh process that loads the agent and makes
+several hundred decisions, and model size is the size of the compressed
+serialised file.
+
+\subsection{Implementation details}\label{sec:impl}
+All experiments run on a 2-core x86-64 Linux container with $3.82$\,GB of RAM,
+which is itself close to a Raspberry Pi profile. The software is Python 3.10,
+scikit-learn $1.7.2$~\cite{pedregosa2011sklearn}, LightGBM
+$4.7.0$~\cite{ke2017lightgbm} and NumPy $2.2.6$. The random seed is fixed at 42,
+and every result file records the platform, seed and code version. Two
+defaults are set from measurement. First, all models predict with a single
+thread: an agent decides about one observation at a time, and creating a
+thread pool costs about $20\times$ more than the prediction itself at that
+batch size ($90$\,ms against $4$\,ms). Second, the router uses shallow
+forests: depth-10, 60-tree forests lose well under one point of accuracy
+compared with unbounded 200-tree forests, while the serialised model becomes
+about $9\times$ smaller.
+
+\section{Results}\label{sec:results}
+This section presents the results in the order of the test beds in
+Table~\ref{tab:datasets}: tool routing, crisis triage, sequential control under
+connectivity loss and resource cost. These are followed by the comparison with
+other machine-learning-based agents, the ablation study of the committee, and
+the analysis of the uncertainty signal.
+
+\subsection{Tool routing and abstention}\label{sec:routing}
+\begin{table}[t]
+\centering
+\caption{Tool routing on BFCL v3, top-1 accuracy (\%). Latency is per single
+decision, not amortised over a batch. $^\dagger$Every test tool unseen in
+training. $^\ddagger$Irrelevance detection: accuracy shown; AUC 0.921.}
 \label{tab:routing}
 \small
 \begin{tabular}{@{}lrrrr@{}}
 \toprule
-Split & $n$ & Lexical & \textbf{CONCLAVE} & ms/dec. \\
+Split & $n$ & Lexical & \textbf{Ours} & ms \\
 \midrule
-\texttt{multiple}            & 60  & 90.0\% & \textbf{98.3\%} & 4.72 \\
-\texttt{live\_multiple}      & 316 & 79.4\% & \textbf{90.8\%} & 3.99 \\
-\texttt{live\_multiple} (unseen tools) & 346 & 56.7\% & \textbf{78.9\%} & 4.35 \\
+\texttt{multiple}                  & 60      & 90.0 & \textbf{98.3} & 4.72 \\
+\texttt{live\_multiple}            & 316     & 79.4 & \textbf{90.8} & 3.99 \\
+\texttt{live\_mult.}$^\dagger$     & 346     & 56.7 & \textbf{78.9} & 4.35 \\
 \midrule
-Abstention (irrelevance)     & 2{,}628 & --- & 84.3\% acc / 0.921 AUC & 0.11 \\
+Abstention$^\ddagger$              & 2{,}628 & ---  & 84.3          & 0.11 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:routing} and Fig.~\ref{fig:routing} report the results. The
-ranking ensemble reaches $90.8\%$ top-1 accuracy on the user-contributed
-multi-tool split at $3.99$\,ms per decision (p99 $7.09$\,ms) from a $631$\,KB
-model. The lexical-similarity control isolates how much comes from learning:
-$11.4$ points on the standard split, and $22.2$ points on the unseen-tool
-split, where the router still reaches $78.9\%$ on tools absent from training.
-Abstention --- deciding no tool applies --- reaches $0.921$ AUC at $0.11$\,ms.
-
-For context, TinyLLM~\cite{haque2025tinyllm} reports $65.74\%$ overall BFCL
-accuracy for optimised sub-3B models. We stress that this is a different
-metric, including argument-level matching, and we do not claim to beat it. The
-defensible comparison is cost: three orders of magnitude in model size, and
-milliseconds against the hundreds of milliseconds to seconds an SLM needs per
-generation on ARM hardware.
+Table~\ref{tab:routing} and Fig.~\ref{fig:routing} show the routing results.
+The ranking committee reaches $98.3\%$ top-1 accuracy on the standard
+\texttt{multiple} split and $90.8\%$ on the user-contributed
+\texttt{live\_multiple} split, at $3.99$\,ms per decision (p99 $7.09$\,ms) with
+a $631$\,KB model. The lexical-similarity router shows how much of this comes
+from learning: the committee is $11.4$ points better on \texttt{live\_multiple}
+and $22.2$ points better on the unseen-tool split, where it still selects the
+correct tool for $78.9\%$ of requests although none of these tools was seen in
+training. For abstention, i.e.\ deciding that no candidate tool applies, the
+committee reaches $84.3\%$ accuracy, an F1 score of $0.815$ and an AUC of $0.921$
+in $0.11$\,ms. We do not compare these numbers with language-model scores on
+the BFCL leaderboard, because its headline metric also checks the arguments of
+each call, whereas the CONCLAVE router selects the tool; the cost of the
+agent is reported in Section~\ref{sec:cost}.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig5_routing.pdf}
-\caption{Tool routing on BFCL v3. Learning contributes 11--22 points over
-lexical matching, with the largest gain where tools were unseen in training.}
+\caption{Tool routing on BFCL v3. Learning adds 8 to 22 points over lexical
+matching, and the largest gain is obtained where the tools were unseen in
+training.}
 \label{fig:routing}
 \end{figure}
 
-\subsection{Crisis perception}
-\label{sec:humaid}
+\subsection{Crisis triage on HumAID}\label{sec:humaid}
 \begin{table}[t]
 \centering
-\caption{HumAID triage, combined 10-class split. Baselines are as reported by
-the dataset authors~\cite{alam2021humaid}, Table 7, row ``All''. The feature
-budget is CONCLAVE's deployment knob.}
+\caption{HumAID triage on the combined 10-class split. Baselines are as
+reported by the HumAID authors (Table 7 of their paper, row ``All''). The
+number of hash buckets is CONCLAVE's deployment parameter.}
 \label{tab:humaid}
 \small
 \begin{tabular}{@{}lrrr@{}}
@@ -342,59 +1036,63 @@ Model & Weighted F1 & Size & ms/dec. \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Reported by the dataset authors}} \\
 RoBERTa            & \textbf{0.760} & $\sim$500\,MB & --- \\
-BERT / DistilBERT / XLM-R & 0.758 & 250--500\,MB & --- \\
+BERT, DistilBERT, XLM-R & 0.758 & $\le$500\,MB & --- \\
 FastText           & 0.744 & --- & --- \\
 SVM                & 0.731 & --- & --- \\
 Random Forest      & 0.707 & --- & --- \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{This work}} \\
-CONCLAVE $2^{16}$ features & 0.743 & 36.4\,MB & 4.94 \\
-CONCLAVE $2^{14}$ features & 0.726 & 10.1\,MB & 1.82 \\
-CONCLAVE $2^{12}$ features & 0.713 & \textbf{2.6\,MB} & \textbf{1.27} \\
+CONCLAVE $2^{16}$ & 0.743 & 36.4\,MB & 4.94 \\
+CONCLAVE $2^{14}$ & 0.726 & 10.1\,MB & 1.82 \\
+CONCLAVE $2^{12}$ & 0.713 & \textbf{2.6\,MB} & \textbf{1.27} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:humaid} and Fig.~\ref{fig:frontier} give the accuracy--footprint
-frontier on the authors' combined split. CONCLAVE lands $1.8$ weighted-F1 points
-behind RoBERTa using a $14\times$ smaller artefact, and matches FastText
-($0.743$ vs $0.744$) while clearly exceeding the authors' SVM ($0.731$) and
-random forest ($0.707$). Even the $2.6$\,MB configuration ($0.713$) edges past
-their random forest --- at a size where a transformer is simply not an option.
-We do not claim to match RoBERTa; we claim the trade is favourable when the
-alternative is no agent at all.
-
-One caution for readers comparing against this dataset: Table 7
-of~\cite{alam2021humaid} also contains a column average of $0.781$, computed
-across per-event and event-type rows. It is not the combined-dataset result and
-should not be used as the baseline for work evaluated on the combined split, as
-we initially did before checking the source table.
+Table~\ref{tab:humaid} and Fig.~\ref{fig:frontier} give the trade-off between
+accuracy and model size on the official combined split. With $2^{16}$ buckets,
+CONCLAVE reaches a weighted F1 of $0.743$ (macro F1 $0.716$), which is $1.8$
+points below RoBERTa with a $14\times$ smaller model; it matches FastText
+($0.743$ against $0.744$) and clearly exceeds the authors' SVM ($0.731$) and
+random forest ($0.707$). Even the $2.6$\,MB configuration ($0.713$) is better
+than their random forest, at a size where a transformer cannot be deployed at
+all. The calibrated gate of Section~\ref{sec:gate} is also effective on this
+task: on the validation split, the thresholds $\tau_c=0.661$ and $\tau_e=0.223$
+accept $54.0\%$ of the tweets with a precision of $90.5\%$, so the remaining
+tweets can be passed to a human analyst. Readers who compare with this dataset
+should note that Table~7 of the HumAID paper also contains a column average of
+$0.781$, which is computed across per-event and event-type rows; it is not the
+result for the combined split and should not be used as the baseline for it.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.82\columnwidth]{fig2_frontier.pdf}
-\caption{Accuracy against deployment footprint on HumAID. Each point is a
-hashed-feature budget.}
+\caption{Weighted F1 against model size on HumAID. Each point is one number of
+hash buckets; horizontal lines are the baselines reported by the dataset
+authors.}
 \label{fig:frontier}
 \end{figure}
 
-\subsection{Sequential control under connectivity loss}
-This is the experiment the work exists for, and it is deliberately stacked
-against us. The cloud baseline runs an \textbf{oracle} policy with access to
-the simulator's latent risk --- no real language model would do this well.
-CONCLAVE sees only noisy sensors and a text field report, and was trained by
-behaviour cloning on that same expert, so it is strictly weaker in capability.
-Any advantage therefore comes from availability alone.
+\subsection{Sequential control under connectivity loss}\label{sec:sequential}
+This experiment tests the central claim of the paper, and it is designed to be
+unfavourable to CONCLAVE. The cloud agent follows the \emph{expert} controller,
+which sees the hidden flood risk, while CONCLAVE sees only the noisy sensors
+and the text report and was trained by behaviour cloning on the same expert.
+CONCLAVE is therefore weaker in capability, and any advantage must come from
+availability. In this experiment the gate is not allowed to withhold actions,
+so that the comparison measures the policy itself; the use of uncertainty for
+escalation is analysed in Section~\ref{sec:unc_results}.
 
 \begin{table}[t]
 \centering
-\caption{Mean episode return under connectivity loss, 120 episodes per cell.
-Paired bootstrap over identical episode seeds.}
+\caption{Mean episode return under connectivity loss, 120 episodes per row.
+$\Delta$ is the paired difference (CONCLAVE minus cloud agent) over identical
+episode seeds, with its bootstrap 95\% confidence interval.}
 \label{tab:availability}
 \small
 \begin{tabular}{@{}rrrrl@{}}
 \toprule
-Offline & \textbf{CONCLAVE} & Cloud oracle & $\Delta$ & 95\% CI \\
+Offline & \textbf{CONCLAVE} & Cloud agent & $\Delta$ & 95\% CI \\
 \midrule
 0.0\%  & $36.5$ & $35.8$   & $+0.6$   & $[-0.7,\ 1.9]$ \\
 35.3\% & $33.9$ & $-34.2$  & $+68.1$  & $[57.6,\ 78.9]$ \\
@@ -407,33 +1105,38 @@ Offline & \textbf{CONCLAVE} & Cloud oracle & $\Delta$ & 95\% CI \\
 \end{table}
 
 Table~\ref{tab:availability} and Fig.~\ref{fig:availability} show the result.
-Under full connectivity the two are statistically indistinguishable
-($\Delta = 0.6$, CI $[-0.7, 1.9]$), which confirms behaviour cloning recovered
-the expert and validates the comparison as fair. From the first outage regime
-onward, CONCLAVE is significantly better, and the gap widens monotonically. In
-casualty terms, the oracle agent's mean rises from $53.7$ to $276.9$ as
-connectivity degrades, while CONCLAVE stays between $41.9$ and $50.0$. A
-last-action cache recovers roughly half the loss but no more: stale actions in
-a fast-moving flood are only marginally better than none. Static threshold
-rules --- the real-world incumbent --- are unaffected by outages, as expected,
-but are far worse than either agent throughout.
+With full connectivity, the two agents are statistically indistinguishable
+($\Delta=0.6$, CI $[-0.7, 1.9]$), which confirms that behaviour cloning has
+recovered the expert policy and that the comparison is fair. From the first
+outage setting onwards, CONCLAVE is significantly better, and the gap increases
+monotonically with the fraction of offline steps. In terms of casualties, the
+mean of the cloud agent rises from $53.7$ to $276.9$ as connectivity degrades,
+whereas CONCLAVE stays between $41.9$ and $50.0$. A last-action cache recovers
+only part of the loss ($-55.9$ at $73\%$ offline), because repeating a stale
+action in a fast-changing flood is only slightly better than doing nothing.
+Static threshold rules, which represent many fielded systems, are not affected
+by outages, but they are much worse than both agents throughout ($-22.2$ to
+$-25.4$).
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig1_availability.pdf}
-\caption{Return and casualties against measured offline fraction. The cloud
-agent has an oracle policy; its collapse is availability, not capability.}
+\caption{Return and casualties against the fraction of offline steps. The
+cloud agent follows the expert policy; its collapse is caused by lost
+availability, not by lack of capability.}
 \label{fig:availability}
 \end{figure}
 
-\subsection{Resource cost}
+\subsection{Resource cost on low-cost hardware}\label{sec:cost}
 \begin{table}[t]
 \centering
-\caption{Decision cost under emulated edge profiles. Measured values were
-obtained with the board's core count and an enforced RAM ceiling; on-device
-columns are estimates scaled by relative single-core throughput.}
+\caption{Decision cost of the scikit-learn agent under emulated board
+profiles. Measured values were obtained with the board's core count and, for
+boards with at least 1\,GB, an enforced RAM ceiling; on-device columns are
+estimated by Eq.~\eqref{eq:estimate}.}
 \label{tab:edge}
 \small
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}lrrrr@{}}
 \toprule
 & \multicolumn{2}{c}{Measured (host)} & \multicolumn{2}{c}{Estimated on-device} \\
@@ -449,160 +1152,425 @@ Pi Zero 2 W       & 2.49\,ms & 3.37\,ms & 22.59\,ms & 56.5\,mJ \\
 \end{tabular}
 \end{table}
 
-Each cell is the lowest-median batch of five independent batches of 120
-decisions. Interference from other processes can only make a timing slower, so
-a single batch is an upper bound contaminated by whatever else the machine was
-doing; taking the quietest batch is the least-contaminated estimate. We also
-record the ratio of worst to best batch median (at most $1.19$ here) so that
-contamination stays visible rather than being averaged away. Without this, we
-measured p99 figures that varied by $2.5\times$ between runs on the same code.
+\begin{table}[t]
+\centering
+\caption{The same trained flood agent deployed with scikit-learn and with the
+NumPy-only edge runtime. Both run in a fresh process on 600 held-out
+observations.}
+\label{tab:runtime}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Quantity & scikit-learn & \textbf{NumPy runtime} \\
+\midrule
+Libraries on the device & sklearn, SciPy & NumPy only \\
+Model file             & 232\,KB  & \textbf{113\,KB} \\
+Peak RAM               & 185.7\,MB & \textbf{32.2\,MB} \\
+Memory cap passed      & 512\,MB & \textbf{256\,MB} \\
+Median latency (host)  & 2.72\,ms & \textbf{0.19\,ms} \\
+p99 latency (host)     & 4.18\,ms & \textbf{0.30\,ms} \\
+Est.\ median, Pi Zero 2 W & 24.7\,ms & \textbf{1.71\,ms} \\
+Identical decisions    & --- & 2{,}400 / 2{,}400 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-We separate measurement from modelling, because conflating them is how resource
-claims fail review. Measured: single-decision latency with the target's core
-count and an enforced \texttt{RLIMIT\_AS} ceiling, peak resident memory, and
-serialised size. Estimated, and labelled as such: on-device latency scaled by
-relative single-core throughput, and energy as latency $\times$ TDP.
+The complete disaster agent --- featuriser and committee --- serialises to
+$232$\,KB. Table~\ref{tab:edge} shows that, with the core counts of the boards
+applied, a decision takes about $2.5$\,ms on the host, and the estimated mean
+latency is $22.6$\,ms (p99 $30.6$\,ms) even on a Raspberry Pi Zero~2\,W, with an
+energy of about $56$\,mJ per decision. With the scikit-learn stack, however, the
+process needs about $185$\,MB of memory, most of which is taken by SciPy and
+scikit-learn rather than by the agent.
+
+The NumPy-only runtime of Section~\ref{sec:runtime} removes this overhead
+(Table~\ref{tab:runtime} and Fig.~\ref{fig:edge}). On 2{,}400 held-out
+observations it reproduces the scikit-learn agent exactly: all actions and all
+gate decisions are identical, and the largest difference in any posterior
+probability is $8\times10^{-14}$. The exported file keeps 2{,}486 of the
+16{,}396 feature columns and occupies $113$\,KB. Peak memory falls from $185.7$\,MB
+to $32.2$\,MB, and the runtime runs under an enforced address-space limit of
+$256$\,MB, half the RAM of a Pi Zero~2\,W. The median decision time falls from
+$2.72$\,ms to $0.19$\,ms, because the overhead of the general-purpose library
+calls disappears; the estimated median on a Pi Zero~2\,W is $1.71$\,ms, and
+$0.67$\,ms on a Raspberry Pi~4B. The closed-loop agent of
+Section~\ref{sec:sequential} was also exported and run inside the simulator
+through the runtime: its returns are identical to those of the scikit-learn
+agent ($36.5$ and $33.5$), with $31.4$\,MB of memory.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig4_edge.pdf}
-\caption{Left: estimated per-decision latency across emulated boards, with the
-1\,s mark shown for scale. Right: deployment footprint against the smallest
-agent-capable language models, on a log axis.}
+\caption{(a) Estimated median decision latency of the flood agent on each
+board with the scikit-learn stack and with the NumPy edge runtime. (b) Peak
+RAM of a fresh process for every ML agent of Section~\ref{sec:compare}
+and for CONCLAVE with the edge runtime; the dashed line is the RAM of a
+Raspberry Pi Zero~2\,W.}
 \label{fig:edge}
 \end{figure}
 
-The complete disaster agent --- featuriser and ensemble --- serialises to
-$232$\,KB, roughly $2100\times$ smaller than a quantised 0.5B SLM's weights. Fig.~\ref{fig:edge} puts
-that alongside the smallest language models the agentic literature considers.
-Estimated decision latency is about $23$\,ms mean and $31$\,ms at the 99th percentile even on a Pi Zero
-2\,W. We report one caveat plainly: peak resident memory is $217$\,MB, which is
-dominated by the Python runtime and scientific stack, not the agent. On a
-$512$\,MB board that fits, but a C or MicroPython deployment would remove most
-of it, and we have not built one.
+\subsection{Comparison with other machine-learning-based agents}\label{sec:compare}
+To show the contribution of CONCLAVE more directly, we compare it with eight
+other agents whose decision cores are machine learning models, and with the
+reference agents of Section~\ref{sec:sequential}. All ML agents run fully
+offline on the same CPU and are trained on the same 6{,}400 decisions with the
+same features, so they differ only in the decision core. They are evaluated in
+the two conditions that matter most in the field: \emph{no internet} (the
+network down for $73\%$ of the steps) and \emph{low-cost hardware} (latency,
+model size and memory, and the estimated latency on a Raspberry Pi Zero~2\,W).
+Table~\ref{tab:agents} and Fig.~\ref{fig:agents} summarise the results.
 
-\subsection{Does the uncertainty signal earn its place?}
+\begin{table*}[t]
+\centering
+\caption{Comparison of CONCLAVE with other agents in the flood-response task
+under no-internet and low-cost-hardware conditions. One-step accuracy is
+measured on 2{,}400 held-out expert decisions; returns and casualties are means
+over 120 episodes. Latency is the median single decision on the host;
+on-device latency is estimated by Eq.~\eqref{eq:estimate}. Peak RAM is that of
+a fresh process. The best value among the ML agents is in bold.}
+\label{tab:agents}
+\footnotesize
+\setlength{\tabcolsep}{4.2pt}
+\begin{tabular}{@{}lcrrrrrrrrl@{}}
+\toprule
+& & & \multicolumn{2}{c}{Return} & Casualties & \multicolumn{2}{c}{Latency (ms)} & Model & Peak & Uncertainty \\
+\cmidrule(lr){4-5}\cmidrule(lr){7-8}
+Agent & Internet & Acc.\ (\%) & 0\% off & 73\% off & 73\% off & host & Pi Zero & (KB) & RAM (MB) & signal \\
+\midrule
+\multicolumn{11}{@{}l}{\emph{Reference agents}} \\
+Cloud agent (expert policy) & needed & --- & 35.8 & $-$127.3 & 276.9 & --- & --- & remote & --- & none \\
+Cloud agent + action cache & needed & --- & 35.8 & $-$55.9 & 193.5 & --- & --- & remote & --- & none \\
+Static threshold rules & no & --- & $-$22.2 & $-$25.4 & 72.6 & $<$0.01 & $<$0.1 & --- & --- & none \\
+\midrule
+\multicolumn{11}{@{}l}{\emph{Machine-learning-based agents (all offline)}} \\
+CBR ($k$-NN) & no & 93.9 & 17.1 & 16.3 & 81.8 & 11.84 & 107.6 & 2{,}361 & 220 & confidence \\
+Decision tree & no & \textbf{98.7} & 34.0 & 31.6 & 62.7 & 1.03 & 9.3 & \textbf{16} & 179 & confidence \\
+Naive Bayes & no & 74.4 & $-$57.2 & $-$69.0 & 190.7 & 2.06 & 18.8 & 73 & 183 & confidence \\
+Logistic regression & no & 98.4 & 33.0 & 29.7 & 68.7 & 1.09 & 9.9 & 117 & 180 & confidence \\
+MLP & no & 97.0 & 31.5 & 29.0 & 67.6 & 1.04 & 9.4 & 32{,}575 & 213 & confidence \\
+Random forest & no & 91.5 & 21.9 & 21.9 & 69.3 & 4.30 & 39.1 & 1{,}878 & 194 & confidence \\
+LightGBM & no & 98.6 & 33.4 & 31.4 & 64.7 & 1.40 & 12.7 & 1{,}751 & 196 & confidence \\
+Hard-vote ensemble~\cite{sen2026context} & no & 96.5 & 27.7 & 24.5 & 72.5 & 15.37 & 139.8 & 36{,}793 & 267 & vote split \\
+\midrule
+\textbf{CONCLAVE} (scikit-learn) & no & 96.3 & \textbf{36.5} & \textbf{33.5} & \textbf{50.0} & 2.45 & 22.3 & 249 & 184 & aleatoric + epistemic \\
+\textbf{CONCLAVE} (NumPy runtime) & no & 96.3 & \textbf{36.5} & \textbf{33.5} & \textbf{50.0} & \textbf{0.19} & \textbf{1.7} & 128 & \textbf{31} & aleatoric + epistemic \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\textit{No internet.} The cloud agent loses most of its value when the network
+fails: its return falls from $35.8$ to $-127.3$ and its casualties rise to
+$276.9$. All ML agents are unaffected by the outage because they decide
+locally, but their quality differs widely. CONCLAVE obtains the highest return
+of all agents, both with the network up ($36.5$) and with $73\%$ of the steps
+offline ($33.5$), and the fewest casualties ($41.9$ and $50.0$). In the paired
+comparison over identical episodes, CONCLAVE is significantly better than every
+other ML agent with the network up; with $73\%$ of the steps offline it is
+significantly better than all of them except the single decision tree
+($\Delta=1.9$, CI $[-0.2, 3.9]$). The decision tree, LightGBM and logistic
+regression form a second group (returns of $29.7$ to $31.6$ offline); the
+multilayer perceptron, the hard-vote ensemble, the random forest and the
+case-based-reasoning agent follow, and naive Bayes alone fails ($-69.0$).
+
+An important observation is that one-step accuracy does not predict
+closed-loop quality. The decision tree ($98.7\%$), LightGBM ($98.6\%$) and
+logistic regression ($98.4\%$) imitate the expert more accurately than
+CONCLAVE ($96.3\%$), but they obtain lower returns and, with the network down, $13$ to $19$ more
+casualties per episode. In a sequential task, an error changes the next
+observation, and errors compound. A committee of members with different
+inductive biases makes errors that are less correlated with each other, so
+its policy drifts less from situations seen in training. The hard-vote
+ensemble does not show this benefit ($24.5$), because majority voting over
+three members discards the probability information that soft voting keeps.
+
+\textit{Low-cost hardware.} CONCLAVE is also one of the cheapest agents to run.
+With scikit-learn, it takes $2.45$\,ms per decision ($22.3$\,ms estimated on a
+Pi Zero~2\,W), its model is $249$\,KB and the process needs $184$\,MB. The single
+linear and tree models are smaller or faster, but less effective in closed
+loop, while the case-based-reasoning agent, the random forest and the
+hard-vote ensemble are $2$ to $6\times$ slower and $7$ to $150\times$ larger, because
+they store their training cases or hundreds of trees. With the NumPy runtime,
+CONCLAVE needs only $0.19$\,ms per decision ($1.69$\,ms estimated on a Pi
+Zero~2\,W), a $128$\,KB file and $31$\,MB of memory, with identical returns; this
+runtime applies to any committee of linear members, whereas the tree-based,
+neural and case-based agents need their full libraries on the device. Finally, CONCLAVE is the only agent with both an aleatoric
+and an epistemic uncertainty estimate, which the gate uses to decide when to
+escalate; single models provide only their confidence, and the hard-vote
+ensemble only the split of its votes.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{fig6_ml_agents.pdf}
+\caption{(a) Mean episode return of every agent with the network up and with
+the network down for $73\%$ of the steps (naive Bayes, at $-57$ and $-69$, is
+omitted). (b) Return with $73\%$ of the steps offline against the estimated
+decision latency on a Raspberry Pi Zero~2\,W; marker area grows with model size.
+CONCLAVE gives the best quality at a latency well within real-time limits.}
+\label{fig:agents}
+\end{figure*}
+
+\begin{table}[t]
+\centering
+\caption{Single models against the CONCLAVE committee on one-step tasks: top-1
+tool-routing accuracy (\%) on the three BFCL splits and weighted F1 (\%) on
+HumAID ($2^{16}$ buckets). Identical features and splits; --- means the model
+is not a member of that committee.}
+\label{tab:single}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Model & \texttt{multiple} & \texttt{live} & unseen & HumAID \\
+\midrule
+Logistic regression & \textbf{98.3} & 86.7 & \textbf{84.1} & \textbf{74.7} \\
+Random forest       & 96.7 & 88.9 & 74.9 & --- \\
+LightGBM            & 95.0 & 87.3 & 65.6 & --- \\
+SGD (modified Huber)& --- & --- & --- & 72.7 \\
+Naive Bayes         & --- & --- & --- & 66.2 \\
+\midrule
+CONCLAVE committee  & \textbf{98.3} & \textbf{90.8} & 78.9 & 74.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:single} completes the comparison for the one-step tasks. In
+tool routing, the committee is the best ranker on the user-contributed split
+($90.8\%$, $1.9$ to $4.1$ points above any single member) and equals the best
+one on the standard split ($98.3\%$). On tools never seen in training, logistic
+regression alone generalises best ($84.1\%$): the tree members learn patterns
+that are specific to the training tools, and averaging them with the linear
+member costs $5.2$ points on new tools. In crisis triage, logistic regression
+alone is slightly above the committee ($74.7\%$ against $74.3\%$), while SGD and
+naive Bayes are lower. Therefore, in one-step classification the committee
+performs at the level of its best member, and its main advantages are the
+uncertainty estimate and the closed-loop robustness shown above. For
+open-vocabulary routing, these results also suggest a practical rule: when
+most tools will be added after deployment, the linear member should receive a
+larger weight.
+
+\subsection{Ablation study: role of the committee}\label{sec:ablation}
+\begin{table}[t]
+\centering
+\caption{Ablation on the flood decision data (one-step accuracy). Identical
+features, splits and seeds; the only variable is the set of members. Single
+models have no epistemic term by construction. The shift condition is $60\%$
+sensor dropout.}
+\label{tab:ablation}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrrrr}
+\toprule
+& & & \multicolumn{2}{c}{shift AUROC} & \\
+\cmidrule(lr){4-5}
+Model & Acc.\ (\%) & AURC & conf. & epist. & MB \\
+\midrule
+LogReg only& 98.31 & 0.949 & 0.662 & --- & 0.08 \\
+Random forest only& 93.25 & 0.942 & 0.577 & --- & 2.45 \\
+Extra trees only& 92.25 & 0.940 & 0.644 & --- & 3.36 \\
+HistGB only& 98.62 & 0.950 & 0.783 & --- & 1.03 \\
+LightGBM only& 98.75 & 0.950 & 0.808 & --- & 1.49 \\
+Committee: all trees& 91.12 & 0.932 & 0.531 & 0.511 & 1.43 \\
+Committee: default& 95.00 & 0.946 & 0.753 & 0.685 & 0.16 \\
+Committee: diverse& 98.75 & 0.949 & 0.787 & 0.801 & 4.05 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:ablation} isolates the effect of the committee's composition on
+one-step decisions, using the same features, splits and seeds for every
+candidate. Three observations can be made.
+
+\textit{Accuracy.} The best single model (LightGBM, $98.75\%$) equals the best
+committee (LightGBM, logistic regression and random forest, $98.75\%$) in
+one-step accuracy and AURC. One-step accuracy alone is therefore not the reason
+to use a committee; the reasons are the closed-loop robustness shown in
+Section~\ref{sec:compare} and the uncertainty signal.
+
+\textit{Diversity.} The diversity of the members is essential. A committee of
+three tree models has almost no disagreement (mean epistemic uncertainty
+$0.007$), and its shift-detection AUROC is $0.511$, close to chance, while the
+mixed committee reaches $0.030$ and $0.801$. Homogeneous members agree even when
+they are wrong, which is the failure mode anticipated in
+Section~\ref{sec:models}.
+
+\textit{Weighting.} Under uniform voting, the default committee reaches
+$95.0\%$ one-step accuracy in this setting, below its best member ($98.3\%$),
+because the naive Bayes member is much weaker than the other two. Out-of-fold
+log-loss weighting (Eq.~\eqref{eq:weights}) gives this member almost zero
+weight and raises the accuracy of the closed-loop agent from $96.3\%$ to
+$98.0\%$. In closed loop, however, the log-loss-weighted agent obtains a lower
+return than the uniform one ($33.5$ against $36.5$ with the network up, and
+$30.9$ against $33.5$ with $73\%$ offline; both differences significant) and more
+casualties ($56.9$ against $41.9$). The weak member still decorrelates the
+committee's errors, and this matters more in a sequential task than its
+one-step accuracy suggests. For this reason, uniform voting is used for the
+closed-loop agent.
+
+\subsection{Analysis of the uncertainty signal}\label{sec:unc_results}
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig3_uncertainty.pdf}
-\caption{Left: selective prediction. Right: uncertainty tracks accuracy
-degradation across covariate shifts.}
+\caption{(a) Selective prediction: accuracy on the decisions the agent acts on,
+as the fraction of accepted decisions falls. (b) Accuracy under different
+covariate shifts (bars) and the AUROC of epistemic uncertainty for detecting
+each shift (line).}
 \label{fig:uncertainty}
 \end{figure}
 
-\textbf{Selective prediction works.} Accuracy on acted-on decisions rises from
-$96.3\%$ at full coverage to $100\%$ at $50\%$ coverage, while random rejection
-stays flat at $\sim\!96\%$ (AURC $0.946$).
+\textit{Selective prediction.} When the agent is allowed to decline the
+decisions it is least sure about, the accuracy of the decisions it acts on
+rises from $96.3\%$ at full coverage to $100\%$ at $50\%$ coverage, whereas
+random rejection stays at about $96\%$ (Fig.~\ref{fig:uncertainty}a; AURC
+$0.946$). The committee's confidence is therefore a reliable ranking of its
+own errors.
 
-\textbf{Shift detection works.} Across sensor noise, dropout, bias, and an
-unfamiliar report vocabulary, uncertainty rises monotonically as accuracy falls
---- AUROC $0.955$ for novel text (accuracy $96.3\% \rightarrow 67.2\%$) and
-$0.820$ for $80\%$ sensor dropout (accuracy $\rightarrow 26.6\%$). We note an
-initial probe that shifted flood \emph{severity} gave AUROC $\approx 0.50$;
-that was a flaw in the probe, not the signal, because the controller keeps
-observations in-distribution under severity change. We report it because the
-distinction --- shifting latent dynamics is not shifting covariates --- is easy
-to get wrong.
+\textit{Detection of degraded inputs.} Across sensor noise, sensor dropout,
+sensor bias and an unfamiliar report vocabulary, uncertainty rises as accuracy
+falls (Fig.~\ref{fig:uncertainty}b). Epistemic uncertainty detects a novel
+report vocabulary with an AUROC of $0.955$ (accuracy falls from $96.3\%$ to
+$67.2\%$) and $80\%$ sensor dropout with an AUROC of $0.820$ (accuracy
+$26.6\%$). In these tests, the maximum posterior confidence performs at the same
+level as epistemic uncertainty (for example, $0.960$ against $0.955$ for the
+novel vocabulary), so both can be used as the trigger for escalation. Shifts
+that change only the hidden flood severity are not detected (AUROC
+$\approx0.50$), because the expert keeps the observations within the training
+range; detection requires a change in the inputs themselves.
 
-\textbf{The decomposition does not beat plain confidence.} On both selective
-prediction and shift detection, max-posterior confidence matches or slightly
-exceeds the epistemic term (e.g.\ $0.960$ vs $0.955$ AUROC on novel text). The
-theoretical appeal of separating aleatoric from epistemic uncertainty did not
-translate into measured advantage on these tasks.
+\textit{Allocation of human oversight.} We also tested whether uncertainty
+can decide \emph{when} to spend a limited budget of human interventions in a
+sequential task with $60\%$ sensor dropout. With a budget of 10 interventions per
+episode, random allocation raised the mean return from $-14.7$ to $+2.9$,
+whereas allocation by epistemic uncertainty reached $-11.1$ and by confidence
+$-10.3$. Uncertainty-triggered interventions cluster early in the episode,
+when uncertainty is high but the consequences are still small, while random
+allocation spreads them over the whole horizon. This shows that, for
+sequential oversight, the uncertainty of a decision must be combined with the
+consequence of an error at that step; a value-of-information criterion of this
+kind is a direction for future work, while the uncertainty signal remains
+effective for selective prediction and for detecting degraded inputs.
 
-\textbf{And uncertainty-triggered oversight fails outright.} Under $60\%$
-sensor dropout, with a budget of $10$ human interventions per episode, random
-allocation lifts mean return from $-14.7$ to $+2.9$, while epistemic-triggered
-allocation reaches only $-11.1$ and confidence-triggered $-10.3$. Random wins.
-The diagnosis: instantaneous uncertainty is high in \emph{clusters}, so
-uncertainty-triggered escalations bunch together early in an episode, whereas
-random allocation spreads oversight across the horizon. In a sequential task,
-\emph{when} a decision matters is at least as important as how uncertain it is,
-and an instantaneous signal is blind to that. The correction is a
-value-of-information criterion that weights uncertainty by the consequence of
-error at that step; we have not implemented it, and we flag it as the most
-promising direction for follow-up work.
+\section{Discussion}\label{sec:discussion}
 
-\section{Discussion}
+\subsection{Why the committee acts better in closed loop}
+The most important finding of the comparison is that the ranking of agents by
+one-step accuracy is not the ranking by closed-loop return. Three single
+models imitate the expert more accurately than CONCLAVE, yet CONCLAVE obtains
+the highest return and the fewest casualties, with or without the network. In
+behaviour cloning, every error moves the agent towards situations that are
+less represented in the training data, where further errors become more
+likely. The members of CONCLAVE --- a discriminative linear model, a
+margin-based linear model and a generative model --- make errors in different
+situations, so soft voting removes many of them before they can compound. The
+ablation supports this explanation: removing the influence of the weakest
+member by log-loss weighting raises one-step accuracy but lowers the
+closed-loop return, and a committee of similar tree models loses the
+disagreement signal altogether. For agent design, this suggests that members
+should be selected for the diversity of their errors, not only for their
+individual accuracy.
 
-\subsection{When to use which core}
-Our results do not show that ensemble agents are better than language-model
-agents. They show the two occupy different regimes. A language model remains
-necessary when the action space is open-ended, when the task specification
-arrives in unconstrained natural language and changes between invocations, or
-when the agent must compose genuinely novel plans. An ensemble core is
-preferable when the tool set is enumerable, the observations are largely
-structured, the decision recurs, the deployment is connectivity-denied or
-power-constrained, or worst-case latency must be certified. Disaster response
-sits squarely in the second regime, as do industrial monitoring, agricultural
-control, and remote clinical triage.
+\subsection{Practical implications for disaster response}
+For flood-prone regions such as the river basins of Bangladesh, the results
+indicate a practical deployment path. A complete agent that triages field
+reports, selects response tools and recommends actions fits in about
+$128$\,KB, needs about $31$\,MB of memory and an estimated $2$\,ms per decision on
+a Raspberry Pi Zero~2\,W, a board that can run from a small battery or solar
+panel. Such an agent continues to work when the mobile network fails, which
+is exactly the period in which the cloud agent of Section~\ref{sec:sequential}
+loses most of its value. Because the output space is a fixed set of
+registered tools, the agent cannot produce an action outside that set, and the
+constraint layer keeps irreversible actions --- such as opening a sluice gate
+or ordering an evacuation --- under human authority. The calibrated gate adds a
+measured basis for this hand-over: on HumAID, more than half of the incoming
+messages can be triaged automatically at $90\%$ precision, and the rest are
+passed to a human analyst.
 
-\subsection{The cost of the language model was mostly not reasoning}
-A striking implication of Section~\ref{sec:humaid} and Table~\ref{tab:routing}
-is how much of an agentic pipeline turns out not to need language modelling.
-Tool routing is ranking; abstention is binary classification; triage is
-multi-class classification; sequential control is policy learning. The language
-model in a conventional stack is doing work that is, for these tasks, largely
-representational --- and a hashing featuriser plus a committee of small models
-recovers most of that representation at a fraction of the cost.
+\subsection{Complement to language-model agents}
+CONCLAVE does not replace language models in every task. A language model
+remains necessary when the action space is open-ended, when the task arrives in
+unconstrained natural language, or when the agent must generate text, for
+example reports from imagery and witness
+accounts~\cite{chen2026integration,pang2026reconstruction}, scenario-driven
+collective decision-making~\cite{wang2025towards} or population-scale
+behavioural simulation~\cite{sultimov2026respond}. The two kinds of core can
+work together. ResQConnect already pairs an online agentic layer with an
+offline tier~\cite{aththanayake2026resqconnect}, and Sen et al.\ place a
+classical ensemble beneath an LLM~\cite{sen2026context}. CONCLAVE is suitable
+for the lowest tier of such a system: the part that must keep deciding when
+every other tier is unreachable, on whatever hardware survives.
 
-\section{Limitations and Threats to Validity}
-We state these plainly.
+\subsection{Where the cost of an agent comes from}
+Our results also show how much of an agentic pipeline does not require
+language modelling. Tool routing is a ranking problem, abstention is binary
+classification, crisis triage is multi-class classification, and flood
+response is policy learning. A hashed featuriser and a small committee of
+classical models solve these problems at a small fraction of the usual cost,
+and a NumPy-only runtime brings the memory requirement down to the size of the
+Python interpreter. Operational cost is now being reported alongside accuracy
+in this literature~\cite{yang2025novel}; we recommend that it becomes a
+standard part of the evaluation, since it often decides whether a system can
+be deployed in the field.
 
-\textbf{No physical hardware.} We do not own a Raspberry Pi or Jetson board.
-Core counts and RAM ceilings were genuinely enforced, but on-device latency and
-energy are model-based estimates using literature-derived throughput ratios.
-They should be treated as projections until measured on real boards.
+\section{Limitations and Future Work}\label{sec:limits}
+Although the experiments cover routing, triage, sequential control and
+resource cost, three limitations remain, and each of them defines a direction
+for future work.
 
-\textbf{The sequential environment is a simulation.} Its dynamics are
-hand-specified, and the expert controller that CONCLAVE clones is a heuristic
-rather than an optimal policy. The availability result --- that a local brain
-keeps working when the network does not --- is robust to these details, but
-absolute returns are not meaningful outside the simulator.
+\textit{Hardware measurements.} The core counts and memory limits of the boards
+were enforced, and the edge runtime was shown to run within an enforced
+$256$\,MB limit, but on-device latency and energy were estimated from host
+measurements with published throughput ratios. Measurements on physical
+Raspberry Pi and Jetson boards are planned as the next step.
 
-\textbf{Argument filling is out of scope.} CONCLAVE routes to a tool and abstains
-when none applies; it does not extract typed arguments from free text, which
-BFCL's headline metric requires. Structured argument extraction with classical
-methods is a real gap.
+\textit{Simulated sequential environment.} The flood-response environment has
+hand-specified dynamics, and its expert controller is a rule-based policy
+rather than an optimal one. The availability result does not depend on these
+details, but absolute returns are specific to the simulator. Calibrating the
+simulator with historical river-gauge and response records from flood-prone
+districts is an important extension.
 
-\textbf{The comparison to SLMs is on cost, not capability.} We did not run an
-SLM baseline ourselves; we cite published numbers on a related but different
-metric. A head-to-head evaluation on identical metrics and identical hardware
-is the obvious next study.
+\textit{Lexical text representation.} Hashed n-grams capture spelling and
+local word order but not compositional meaning, so negation and paraphrase
+are harder for CONCLAVE than for a transformer, which explains part of the gap
+on HumAID. In addition, the router selects the tool, while the arguments of a
+call are supplied by the agent's state, as in the flood agent; extracting typed
+arguments from free text is outside the present scope. Compact sentence
+embeddings and schema-guided argument extraction will be studied in future
+work.
 
-\textbf{Text handling is lexical.} Hashed n-grams have no compositional
-semantics. Negation, sarcasm, and paraphrase will hurt CONCLAVE more than a
-transformer, which likely accounts for much of the HumAID gap.
+\section{Conclusion}\label{sec:conclusion}
+This paper has asked whether an AI agent for disaster response needs a
+language model at its centre, and has proposed CONCLAVE, an agentic AI
+framework in which a heterogeneous committee of classical machine learning
+models serves as the cognitive core. The framework combines hashed text and
+sensor features, soft voting, an aleatoric--epistemic uncertainty
+decomposition, a calibrated gate for acting, gathering, abstaining and
+escalating, case-based memory, symbolic planning, safety constraints and a
+NumPy-only edge runtime. The experimental results show that CONCLAVE selects
+the correct tool with $90.8\%$ accuracy in $4$\,ms, triages crisis tweets within
+$1.8$ F1 points of RoBERTa with a $14\times$ smaller model, and keeps its
+performance when $73\%$ of the steps are offline, while a cloud-dependent agent
+collapses from $35.8$ to $-127.3$. Compared with eight other
+machine-learning-based agents, it achieves the highest closed-loop return and
+the fewest casualties, and with the edge runtime it needs only $31$\,MB of
+memory and an estimated $1.7$\,ms per decision on a Raspberry Pi Zero~2\,W. We
+conclude that, for bounded and recurring decisions such as those of flood
+response, ``agentic'' describes a control architecture rather than a model
+class, and that a committee of classical models can provide reliable,
+uncertainty-aware autonomy without the internet and on inexpensive hardware.
 
-\textbf{Peak memory is dominated by the runtime.} The agent is $232$\,KB; the
-Python process is $217$\,MB. A genuinely microcontroller-class deployment needs
-a reimplementation we have not attempted.
+\section*{Reproducibility and Data Availability}
+All code, seeds, result files and figure-generation scripts are released under
+the Apache-2.0 licence. The two public datasets are downloaded from their
+original sources by \texttt{scripts/fetch\_data.py}. Every result in this paper
+is regenerated by eight scripts in \texttt{experiments/}; each writes a JSON
+file that records the platform, seed and code version, and a test suite checks
+every number quoted in the paper against those files. The complete set of
+experiments takes about one hour on the 2-core machine described in
+Section~\ref{sec:impl}. The
+exported edge agent and its runtime are provided in \texttt{deploy/} and
+\texttt{conclave/edge/runtime.py}.
 
-\section{Conclusion}
-Agentic AI has converged on a single architectural assumption --- that a
-language model belongs at the centre of the loop --- and that assumption
-excludes exactly the deployments where autonomy has the highest stakes: the
-flood district with no cell tower, the remote clinic on a solar panel. We built
-CONCLAVE to test whether the assumption is load-bearing, and find that for
-bounded, recurring, sensor-driven decision loops it largely is not. A
-heterogeneous ensemble routes tools at $90.8\%$ top-1 accuracy in $4$\,ms from
-$631$\,KB, triages crisis reports within $1.8$ F1 points of a transformer at
-$1/14$ the size, and holds its performance flat while an oracle cloud agent
-collapses as connectivity fails. It also has real limits, including one place
-where our central intuition about uncertainty did not survive measurement.
-
-The broader point is that ``agentic'' names a control architecture, not a model
-class. Recovering that distinction makes autonomy available to a large class of
-systems currently priced out of it.
-
-\section*{Reproducibility}
-All code, seeds, result artefacts, and figure-generation scripts are released
-under Apache-2.0. Every result in this paper is regenerated by five scripts in
-\texttt{experiments/}; each writes a JSON artefact recording platform, seed,
-and commit. The full suite runs in under 30 minutes on the 2-core container
-described in Section IV.
-
-\balance
 \bibliographystyle{IEEEtran}
 \bibliography{references}
 
