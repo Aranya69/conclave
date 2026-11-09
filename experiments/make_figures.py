@@ -244,7 +244,71 @@ def fig_routing():
     plt.close(fig); print("fig5_routing")
 
 
+def fig_external():
+    """Experiment 9: external validation on observed rainfall."""
+    d = load("exp9_external_validation")
+    if not d: return
+    fig = plt.figure(figsize=(7.4, 2.75))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.15, 1.0], wspace=0.62)
+    # (a) case study: Sylhet, May-June 2022
+    case = next(c for c in d.get("cases", []) if c["station"] == "sylhet")
+    ax = fig.add_subplot(gs[0]); ax2 = ax.twinx()
+    import datetime as _dt
+    t0 = _dt.date.fromisoformat(case["start"])
+    days = [t0 + _dt.timedelta(days=i) for i in range(len(case["stage"]))]
+    ax2.bar(days, case["rain_mm"], width=0.9, color="#9ecae1", label="daily rainfall")
+    ax2.set_ylabel("rainfall (mm/day)", color="#4a86b5"); ax2.grid(False)
+    ax2.set_ylim(0, max(case["rain_mm"]) * 2.4)
+    ax.set_zorder(ax2.get_zorder() + 1); ax.patch.set_visible(False)
+    ax.plot(days, case["stage"], color="#08306b", lw=1.6, label="river stage")
+    ax.axhline(4.5, color="#c0392b", ls="--", lw=0.9, label="flood level")
+    mk = {"issue_alert": ("v", "#e67e22", "alert"), "evacuate_zone": ("^", "#2ca02c", "evacuate"),
+          "deploy_rescue": ("o", "#8e44ad", "rescue"), "open_sluice": ("s", "#000000", "sluice")}
+    acts = case["agents"]["CONCLAVE (ours)"]["actions"]
+    seen = set()
+    for i, a in enumerate(acts):
+        if a in mk:
+            m, c, l = mk[a]
+            ax.plot(days[i], 13.3, marker=m, color=c, ms=4.2, ls="",
+                    label=None if a in seen else f"CONCLAVE: {l}")
+            seen.add(a)
+    ax.set_ylim(0, 14.2); ax.set_ylabel("stage (m)")
+    import matplotlib.dates as mdates
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
+    ax.legend(fontsize=5.6, loc="center left", frameon=False, ncol=1)
+    ax.set_title("(a) Sylhet, May-June 2022: observed rainfall", fontsize=8)
+    # (b) returns and casualties, simulator-trained agents, 73 % offline
+    ax = fig.add_subplot(gs[1])
+    rows = {r["agent"]: r for r in d["rows"]}
+    order = ["CONCLAVE (ours)", "MLP", "Hard-vote ensemble", "Naive Bayes", "Random forest",
+             "LightGBM", "CBR (k-NN)", "Logistic regression", "Decision tree",
+             "Gauge thresholds (rules)", "Cloud agent (expert, needs network)"]
+    short = {"CONCLAVE (ours)": "CONCLAVE", "Hard-vote ensemble": "Hard vote",
+             "Logistic regression": "Logistic reg.", "Gauge thresholds (rules)": "Gauge rules",
+             "Cloud agent (expert, needs network)": "Cloud agent", "CBR (k-NN)": "CBR (k-NN)"}
+    order = [o for o in order if "return_c1_73" in rows.get(o, {})]
+    order.sort(key=lambda o: rows[o]["casualties_c1_73"])
+    y = np.arange(len(order))
+    cas = [rows[o]["casualties_c1_73"] for o in order]
+    col = ["#1b6ca8" if o.startswith("CONCLAVE") else "#c0392b" if o.startswith("Cloud")
+           else "#7f8c8d" if o.startswith("Gauge") else "#bfbfbf" for o in order]
+    ax.barh(y, cas, color=col)
+    for yi, o in zip(y, order):
+        ax.text(rows[o]["casualties_c1_73"] + 0.4, yi, f"G={rows[o]['return_c1_73']:.1f}",
+                va="center", fontsize=5.8)
+    exp = rows["Expert with true risk (upper bound)"]["casualties_c1_73"]
+    ax.axvline(exp, color="k", ls=":", lw=0.9)
+    ax.text(exp + 0.3, len(order) - 0.6, "expert", fontsize=5.8)
+    ax.set_yticks(y); ax.set_yticklabels([short.get(o, o) for o in order], fontsize=6.6)
+    ax.invert_yaxis(); ax.set_xlabel("mean casualties per episode (73% offline)")
+    ax.set_xlim(0, max(cas) * 1.28)
+    ax.set_title("(b) 540 observed-rainfall episodes, 2015-2024", fontsize=8)
+    fig.savefig(FIG / "fig7_external.pdf"); fig.savefig(FIG / "fig7_external.png")
+    plt.close(fig); print("fig7_external")
+
+
 if __name__ == "__main__":
     fig_availability(); fig_frontier(); fig_uncertainty(); fig_edge(); fig_routing()
-    fig_ml_agents()
+    fig_ml_agents(); fig_external()
     print(f"\nfigures -> {FIG}")
