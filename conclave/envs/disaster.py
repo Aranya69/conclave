@@ -204,13 +204,9 @@ class FloodResponseEnv:
             reward -= 0.15
 
         # --- world dynamics --------------------------------------------------
-        self.rain = float(np.clip(
-            self.rain + self.rng.normal(0, 1.2)
-            + (3.0 if abs(self.t - self.surge_at) < 3 else 0.0), 0, 20))
+        self.rain = self._next_rain()
         drain = 0.45 if self.sluice_open else 0.22
-        self.level = float(np.clip(
-            self.level + 0.11 * self.rain - drain
-            + (self.surge_mag if self.t == self.surge_at else 0.0), 0.4, 14.0))
+        self.level = self._next_level(drain)
 
         if self.level > 4.5:
             exposed = max(c.population - self.evacuated, 0.0)
@@ -232,6 +228,21 @@ class FloodResponseEnv:
                 "casualties": self.casualties, "level": self.level,
                 "stranded": self.stranded, "false_alarms": self.false_alarms}
         return self._observe(), reward, self._done, info
+
+    # --- forcing hooks (overridden by the real-rainfall replay) ----------
+    def _next_rain(self) -> float:
+        """Rainfall for the next step: a bounded random walk with a burst
+        around the surge."""
+        return float(np.clip(
+            self.rain + self.rng.normal(0, 1.2)
+            + (3.0 if abs(self.t - self.surge_at) < 3 else 0.0), 0, 20))
+
+    def _next_level(self, drain: float) -> float:
+        """River level after one step: rain inflow, drainage, and a sudden
+        surge (upstream release or flash flood) at ``surge_at``."""
+        surge = self.surge_mag if self.t == self.surge_at else 0.0
+        return float(np.clip(self.level + 0.11 * self.rain - drain + surge,
+                             0.4, 14.0))
 
     # ------------------------------------------------------------------
     def succeeded(self) -> bool:
