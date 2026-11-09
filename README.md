@@ -98,7 +98,7 @@ constant you can measure and certify.**
 ```bash
 git clone https://github.com/Aranya69/conclave && cd conclave
 pip install -e ".[boost]"
-pytest -q                      # 19 passed, ~20 s
+pytest -q                      # 25 passed, ~20 s
 ```
 
 Then watch it work:
@@ -335,6 +335,29 @@ Single models imitate the expert slightly better one decision at a time, but the
 committee's less-correlated errors compound less over an episode
 (`experiments/exp7_ml_agents.py`).
 
+### External validation on observed rainfall (NASA POWER, Bangladesh)
+
+The agents above are trained only in the simulator. `experiments/exp9_external_validation.py`
+runs them, **without retraining**, on 540 episodes driven by observed daily rainfall
+(NASA POWER, MERRA-2) at Sylhet, Sunamganj, Moulvibazar, Netrokona, Feni and Kurigram.
+Conversions (quantile mapping, antecedent precipitation index → river stage) are fitted
+on 1991–2014; the test years are 2015–2024. Network down for 73 % of steps:
+
+| Agent | Return | Casualties | Floods alerted in advance |
+|:--|--:|--:|--:|
+| Expert with true risk (upper bound) | 16.7 | 4.1 | 100 % |
+| Cloud agent (needs network) | −7.6 | 33.4 | 43 % |
+| **CONCLAVE** | 13.4 | **5.8** | **97 %** |
+| MLP | 15.2 | 6.8 | 93 % |
+| Hard-vote ensemble | 13.3 | 8.3 | 90 % |
+| Gauge threshold rules | 7.3 | 16.5 | 67 % |
+
+CONCLAVE has the fewest casualties of all nine ML agents in all nine calibration
+settings. Negative results, reported as such: from the **gauges alone**, no
+simulator-trained agent beats the threshold rules; adding 160 observed episodes of
+1991–2014 to the training data fixes most of this (CONCLAVE 15.8 with reports,
+11.8 from gauges alone). The rainfall file is in `data/external/`; no account is needed.
+
 ---
 
 ## What does *not* work
@@ -394,11 +417,11 @@ conclave/
 
 deploy/           Dockerfile + compose for emulated ARM64, pi_check.py
 examples/         a complete agent in one file
-experiments/      exp1–exp8 + figure generation
+experiments/      exp1–exp9 + figure generation
 notebooks/        Colab walkthrough: dataset EDA, working process, agent demo
 docs/             the practical guide (LaTeX source + PDF)
 paper/            the research paper
-tests/            19 tests, incl. paper-claim verification
+tests/            25 tests, incl. paper-claim verification
 ```
 
 ## Data

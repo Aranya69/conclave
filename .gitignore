@@ -12,7 +12,9 @@ venv/
 env/
 
 # ---- datasets: not ours to redistribute; use scripts/fetch_data.py
-data/
+data/*
+# NASA POWER rainfall (public, redistributable with acknowledgement) is kept
+!data/external/
 
 # ---- trained artefacts
 *.joblib

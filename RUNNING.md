@@ -47,7 +47,7 @@ Nothing exotic — `numpy`, `scipy`, `scikit-learn`, `joblib`, `psutil`, plus
 pytest -q
 ```
 
-Expect **19 passed** in about twenty seconds. Three groups:
+Expect **25 passed** in about twenty seconds. Four groups:
 
 - `tests/test_smoke.py` — the framework itself: uncertainty maths, the planner,
   tool registry, memory, a full agent episode.
@@ -56,6 +56,7 @@ Expect **19 passed** in about twenty seconds. Three groups:
   these fail on purpose.
 - `tests/test_edge_runtime.py` — the NumPy-only edge runtime reproduces the
   scikit-learn agent exactly.
+- `tests/test_real_forcing.py` — the observed-rainfall replay environment.
 
 VS Code's Testing panel (the flask icon in the sidebar — yes, really) picks
 these up automatically and lets you run them individually.
@@ -134,6 +135,7 @@ python experiments/exp2_humaid.py 12 14  # ~4 min, needs data/humaid
 python experiments/exp6_ablation.py --fresh   # ~6 min, single models vs committees
 python experiments/exp7_ml_agents.py     # ~25 min, CONCLAVE vs 8 other ML agents
 python experiments/exp8_edge_runtime.py  # ~3 min, NumPy-only runtime vs scikit-learn
+python experiments/exp9_external_validation.py  # ~15 min, external validation on NASA POWER rainfall
 python experiments/make_figures.py       # regenerates paper/figures/
 ```
 
