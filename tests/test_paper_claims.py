@@ -337,3 +337,77 @@ def test_edge_runtime_claims():
     assert close(a7["npz_kb"], 128, tol=1.0)
     assert close(a7["runtime"]["peak_rss_mb"], 31.4, tol=0.1)
     assert close(a7["est_ms_pi_zero2w"], 1.69, tol=0.01)
+
+
+# ---------------------------------------------------------------- exp9
+def test_external_validation_claims():
+    """Section IV-F, Table XI, Fig. 8: external validation on observed rainfall."""
+    d = load("exp9_external_validation")
+    data = d["data"]
+    assert data["n_episodes"] == 540 and data["episodes_flooded_on_day0"] == 158
+    assert data["episodes_without_flood"] == 109 and data["episodes_with_flood_in_window"] == 431
+    assert tuple(data["calibration_years"]) == (1991, 2014)
+    assert tuple(data["test_years"]) == (2015, 2024)
+    assert close(data["forcing_main"]["api_threshold_mm"], 152, tol=0.5)
+    assert close(data["test_mean_rain_mm"], 18.2, tol=0.05)
+    assert close(data["calibration_mean_rain_mm"], 9.5, tol=0.05)
+    rows = {r["agent"]: r for r in d["rows"]}
+    c, mlp = rows["CONCLAVE (ours)"], rows["MLP"]
+    exp_, cloud = rows["Expert with true risk (upper bound)"], rows["Cloud agent (expert, needs network)"]
+    ml = [a for a in rows if a not in ("Gauge thresholds (rules)", exp_["agent"], cloud["agent"])]
+    # simulator-trained, gauges + reports, 73 % offline
+    assert close(c["return_c1_73"], 13.4, tol=0.05) and close(exp_["return_c1_73"], 16.7, tol=0.05)
+    assert close(c["return_c1_73"] / exp_["return_c1_73"], 0.80, tol=0.005)
+    assert close(c["casualties_c1_73"], 5.8, tol=0.05)
+    assert min(ml, key=lambda a: rows[a]["casualties_c1_73"]) == "CONCLAVE (ours)"
+    assert close(c["warned_in_time_pct_c1_73"], 97.4, tol=0.05)
+    assert close(mlp["return_c1_73"], 15.2, tol=0.05)
+    assert close(cloud["return_c1_0"], 16.7, tol=0.05) and close(cloud["return_c1_73"], -7.6, tol=0.05)
+    assert close(cloud["casualties_c1_0"], 4.1, tol=0.05) and close(cloud["casualties_c1_73"], 33.4, tol=0.05)
+    tests = [t for t in d["paired_tests"] if t["condition"] == 1 and t["outage_prob"] == 0.5]
+    tt = {t["vs"]: t for t in tests}
+    assert close(tt[cloud["agent"]]["delta_mean"], 21.0, tol=0.05)
+    assert close(tt[cloud["agent"]]["delta_casualties"], -27.6, tol=0.05)
+    others = [a for a in ml if a != "CONCLAVE (ours)"]
+    assert all(tt[a]["cas_significant"] and tt[a]["delta_casualties"] < 0 for a in others)
+    assert sum(tt[a]["significant"] and tt[a]["delta_mean"] > 0 for a in others) == 5
+    assert close(tt["MLP"]["delta_mean"], -1.7, tol=0.05) and tt["MLP"]["significant"]
+    assert not tt["Hard-vote ensemble"]["significant"] and not tt["Naive Bayes"]["significant"]
+    # sensitivity: fewest casualties in all 9 settings, return rank 2 or 3
+    sens = [s for s in d["sensitivity"] if s["condition"] == 1]
+    assert len(sens) == 9
+    assert all(s["conclave_casualty_rank_among_ml"] == 1 for s in sens)
+    assert all(s["conclave_rank_among_ml"] in (2, 3) for s in sens)
+    assert close(min(s["flood_episode_pct"] for s in sens), 65, tol=0.5)
+    assert close(max(s["flood_episode_pct"] for s in sens), 91, tol=0.5)
+    # gauges only, simulator-trained: nobody beats the rules
+    assert all(rows[a]["return_c2_73"] <= 7.3 + 1e-9 for a in ml)
+    assert close(rows["Random forest"]["return_c2_73"], 7.3, tol=0.05)
+    assert close(c["return_c2_73"], -22.0, tol=0.05)
+    # trained on observed 1991-2014 only, and simulator + observed
+    assert close(rows["Decision tree"]["return_c3_73"], 13.3, tol=0.05)
+    assert close(rows["LightGBM"]["return_c3_73"], 13.7, tol=0.05)
+    assert close(c["return_c3_73"], -2.3, tol=0.05)
+    assert close(c["return_c5_73"], 15.8, tol=0.05) and close(c["return_c6_73"], 11.8, tol=0.05)
+    assert close(c["casualties_c6_73"], 18.7, tol=0.05)
+    t5 = {t["vs"]: t for t in d["paired_tests"] if t["condition"] == 5}
+    assert not t5["Decision tree"]["significant"] and not t5["LightGBM"]["significant"]
+    # uncertainty under the shift
+    acc = d["accuracy"]
+    u = acc["reports"]["conclave_uncertainty"]
+    assert close(acc["reports"]["accuracy"]["CONCLAVE (ours)"], 0.797, tol=0.0005)
+    assert close(u["mean_epistemic"], 0.176, tol=0.0005)
+    assert close(acc["synthetic_mean_epistemic"], 0.092, tol=0.0005)
+    assert close(u["auroc_epistemic_flags_errors"], 0.85, tol=0.005)
+    assert close(u["gate_act_pct"], 81.0, tol=0.05)
+    assert close(u["accuracy_when_gate_acts"], 0.904, tol=0.0005)
+    assert close(u["accuracy_when_gate_escalates"], 0.340, tol=0.0005)
+    # case studies
+    cases = {x["station"]: x for x in d["cases"]}
+    syl = cases["sylhet"]
+    assert syl["onset"] - syl["agents"]["CONCLAVE (ours)"]["first_alert"] == 2
+    assert close(syl["agents"]["CONCLAVE (ours)"]["return"], 40.4, tol=0.05)
+    assert close(syl["agents"]["Expert with true risk (upper bound)"]["return"], 41.3, tol=0.05)
+    feni = cases["feni"]
+    assert feni["onset"] - feni["agents"]["CONCLAVE (ours)"]["first_alert"] == 2
+    assert feni["agents"]["LightGBM"]["first_alert"] - feni["onset"] == 7
