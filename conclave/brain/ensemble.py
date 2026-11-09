@@ -65,7 +65,7 @@ def default_members(sparse_input: bool = True, seed: int = 0,
 
 def _is_nonnegative(X) -> bool:
     """True if X contains no negative entries (sparse-safe)."""
-    if hasattr(X, "data"):
+    if hasattr(X, "tocsr"):            # scipy sparse (numpy arrays also have .data)
         return X.data.size == 0 or float(X.data.min()) >= 0.0
     return float(np.min(X)) >= 0.0
 
