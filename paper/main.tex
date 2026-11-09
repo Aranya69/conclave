@@ -27,27 +27,28 @@ University, Dhaka, Bangladesh. E-mail: aranyamahmud29@gmail.com}%
 \maketitle
 
 \begin{abstract}
-Agentic artificial intelligence (AI) systems observe their environment, take
-decisions and act through software tools, and most of them are built around a
-large language model (LLM) running on a cloud server or on powerful local
-hardware. In disaster response this is a serious problem: during floods,
+Agentic artificial intelligence (AI) systems observe, decide and act through
+software tools, and most are built around a large language model (LLM) running
+on a cloud server or on powerful local hardware. In disaster response this is a serious problem: during floods,
 cyclones and earthquakes the communication network is often among the first
-infrastructures to fail, and the devices left in the field are low-cost and
-battery-powered, so an LLM-based agent may become unavailable exactly when it
-is most needed. To address this problem, this paper proposes
+infrastructures to fail, and field devices are low-cost and battery-powered, so an LLM-based agent may become unavailable exactly when it
+is most needed. This paper proposes
 \textbf{CONCLAVE}, an agentic AI framework in which a heterogeneous ensemble of
 classical machine learning models replaces the LLM as the decision-making core.
 The framework combines hashed text and sensor features, a soft-voting
 committee, a decomposition of aleatoric and epistemic uncertainty, a calibrated
-gate that decides whether to act, gather evidence, abstain or escalate, and a
-NumPy-only runtime for low-cost boards. On two public
-datasets, a flood-response simulator and emulated hardware profiles, CONCLAVE
+gate that decides when to act, abstain or escalate, and a
+NumPy-only runtime for low-cost boards. On two public datasets, a flood simulator and emulated hardware, CONCLAVE
 selects the correct tool with $90.8\%$ accuracy in $4.0$\,ms, reaches
-$74.3\%$ weighted F1 on crisis tweets, and keeps a positive return of $33.5$
-when $73\%$ of the steps are offline, whereas a cloud-dependent agent falls to
-$-127.3$. Against eight other machine-learning-based agents it obtains the
-highest return and the fewest casualties, and its runtime needs $32$\,MB of
-memory and an estimated $1.7$\,ms per decision on a Raspberry Pi Zero~2\,W.
+$74.3\%$ weighted F1 on crisis tweets, and keeps a return of $33.5$ when
+$73\%$ of the steps are offline, whereas a cloud-dependent agent falls to
+$-127.3$; in simulation it outperforms eight other machine-learning-based
+agents. Validated externally on observed rainfall of six districts of Bangladesh
+(NASA POWER, 2015--2024), the agent trained only in simulation keeps $80\%$ of
+the expert's return, alerts $97\%$ of floods in advance and has the fewest
+casualties of the ML agents. Its runtime needs
+$32$\,MB of memory and an estimated $1.7$\,ms per decision on a Raspberry Pi
+Zero~2\,W.
 Hence, reliable agentic decision-making for disaster response is possible
 without the internet and on inexpensive hardware.
 \end{abstract}
@@ -158,14 +159,19 @@ The main contributions of this paper are summarised as follows:
       F.~Ofli (ICWSM 2021) and is available at
       \url{https://huggingface.co/datasets/QCRI/HumAID-all}.}, on a
       flood-response simulator with controllable network outages, and on
-      emulated low-cost hardware. A NumPy-only edge runtime reduces the memory
+      emulated low-cost hardware, and it is validated externally on 34 years of
+      observed daily rainfall of six flood-prone districts of Bangladesh
+      (NASA POWER), with a strict temporal split. A NumPy-only edge runtime reduces the memory
       needed on the device from $185$\,MB to $32$\,MB without changing any
       decision.
 \item \textbf{A comprehensive comparison with other agents.} Under
       no-internet and low-cost-hardware conditions, CONCLAVE is compared with
       eight other machine-learning-based agents, a cloud-dependent agent and
-      fixed threshold rules. It gives the highest closed-loop return and the
-      lowest casualties, while remaining one of the cheapest agents to run.
+      fixed threshold rules. In simulation it gives the highest closed-loop
+      return and the lowest casualties, while remaining one of the cheapest
+      agents to run; on observed rainfall it keeps the lowest casualties of
+      all ML agents, and the comparison also identifies where a policy
+      learned in simulation does not transfer.
 \end{enumerate}
 
 The rest of this paper is organised as follows. Section~\ref{sec:lit}
@@ -318,9 +324,9 @@ Section~\ref{sec:problem}; the data and their preparation are described in
 Sections~\ref{sec:data}--\ref{sec:prep}; the features, models and uncertainty
 mechanism are explained in Sections~\ref{sec:features}--\ref{sec:constraints};
 the complete decision loop is given in Algorithm~\ref{alg:loop} and
-Fig.~\ref{fig:agent}; and the simulator, the edge runtime, the compared agents
-and the evaluation metrics are described in
-Sections~\ref{sec:sim}--\ref{sec:impl}.
+Fig.~\ref{fig:agent}; and the simulator, the external validation with
+observed rainfall, the edge runtime, the compared agents and the evaluation
+metrics are described in Sections~\ref{sec:sim}--\ref{sec:impl}.
 
 \begin{figure*}[t]
 \centering
@@ -350,7 +356,7 @@ CONCLAVE, $\pi$ is realised by a committee of $M$ classical classifiers, and
 the confidence of the policy is estimated from their agreement.
 
 \subsection{Data collection}\label{sec:data}
-The framework is evaluated on four test beds, summarised in
+The framework is evaluated on five test beds, summarised in
 Table~\ref{tab:datasets}. Each test bed isolates one capability that an
 offline agent needs, so that each capability can be measured on its own. Two
 of them are public datasets. BFCL~v3 pairs each user request with the
@@ -363,11 +369,14 @@ its category. The other two test beds were built for this study, because no
 public dataset measures what they measure: a flood-response simulator tests
 decisions over time while the network fails, and emulated hardware profiles
 test whether the agent fits, and runs fast enough, on low-cost boards
-(Table~\ref{tab:boards}).
+(Table~\ref{tab:boards}). The fifth test bed is public observed data: daily
+rainfall of six flood-prone districts of Bangladesh from NASA POWER, which is
+used to validate the flood agents externally, outside the simulator in which
+they were trained (Section~\ref{sec:extmethod}).
 
 \begin{table}[t]
 \centering
-\caption{The four test beds. Two are public datasets and two were built for
+\caption{The five test beds. Three are public datasets and two were built for
 this study; each isolates one capability.}
 \label{tab:datasets}
 \footnotesize
@@ -383,6 +392,8 @@ HumAID \newline (public dataset) & 76{,}484 tweets in 10 humanitarian categories
 Flood simulator \newline (built here) & 40-step episodes in 6 outage settings, with the network down for 0--73\% of steps; 120 test episodes per setting & Acting over time while the network is down (Sec.~\ref{sec:sequential}) \\
 \addlinespace
 Edge profiles \newline (built here) & The host machine and 4 emulated boards with 512\,MB to 4\,GB of RAM, from a Raspberry Pi Zero 2\,W to a Jetson Nano & Fitting and running fast on small hardware (Sec.~\ref{sec:cost}) \\
+\addlinespace
+NASA POWER rainfall \newline (public data) & Daily rainfall 1991--2024 at 6 districts of Bangladesh; calibration 1991--2014, 540 test episodes 2015--2024 & Acting on real weather never seen in training (Sec.~\ref{sec:external}) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -874,6 +885,74 @@ level exceeds 5\,m; issues an alert if $\varrho_t>0.55$ and no warning has been
 issued; evacuates if $\varrho_t>0.6$ and less than $70\%$ of the population has
 left; requests supplies if boats or supplies run low; and otherwise monitors.
 
+\subsection{External validation with observed rainfall}\label{sec:extmethod}
+The simulator generates its own weather, so a policy that is learned and
+tested in it may only have learned the simulator. To validate the agents
+externally, we replace the synthetic weather by observed rainfall and run the
+trained agents, without any retraining, on the real rainfall record of
+Bangladesh.
+
+\textit{Data collection.} Daily corrected precipitation (parameter
+PRECTOTCORR, mm/day, from the MERRA-2 reanalysis) was downloaded from the NASA
+POWER service\footnote{These data were obtained from the NASA Langley
+Research Center (LaRC) POWER Project funded through the NASA Earth Science
+Directorate Applied Science Program: \url{https://power.larc.nasa.gov}. No
+account is required.} for 1~January~1991 to 31~December~2024 at six
+flood-prone districts: Sylhet, Sunamganj, Moulvibazar and Netrokona in the
+north-eastern flash-flood basin, Feni in the south-east and Kurigram on the
+Brahmaputra. The record has $12{,}419$ days per station and no missing values.
+
+\textit{Temporal split.} The years 1991--2014 form the \emph{calibration
+period} and the years 2015--2024 the \emph{test period}; no information from the
+test period is used to fit anything. From April to October of every test year,
+nine 40-day windows (starting on 1~April, 21~April, \dots, 8~September) are cut
+at every station, which gives $6\times10\times9=540$ real episodes. In 431 of
+them the river crosses the flood level inside the window (in 158 already on
+the first day) and in 109 it does not, so the test also measures false
+alarms.
+
+\textit{From rainfall to the task.} Two conversions, both fitted on the
+calibration period only, connect the record to the task. First, the observed
+rainfall $P_t$ is mapped onto the rainfall scale of the agent's sensor by
+empirical quantile mapping,
+\begin{equation}
+\tilde{\rho}_t=F_{\mathrm{sim}}^{-1}\big(F_{\mathrm{obs}}(P_t)\big),
+\label{eq:qmap}
+\end{equation}
+where $F_{\mathrm{obs}}$ is the distribution of daily rainfall in the
+calibration seasons (all stations pooled) and $F_{\mathrm{sim}}$ that of the
+simulator's rainfall in the training episodes. Second, the river stage is
+obtained from the antecedent precipitation index (API), the classical wetness
+index of hydrology,
+\begin{equation}
+A_t=\kappa A_{t-1}+P_t,\qquad
+\ell_t=\ell_0+\beta A_t,\quad \beta=\frac{4.5-\ell_0}{A_{q}},
+\label{eq:api}
+\end{equation}
+where $\kappa$ is the daily recession factor, $\ell_0=1$\,m is the base stage,
+and $A_q$ is the $q$-quantile of the API in the calibration seasons, so that
+the flood level of the task ($4.5$\,m) is reached on the wettest $1-q$ of
+calibration days. The main setting is $\kappa=0.85$ and $q=0.95$
+($A_q=152$\,mm). Because both values are choices, every result is repeated on
+the $3\times3$ grid $\kappa\in\{0.80,0.85,0.90\}$, $q\in\{0.90,0.95,0.98\}$.
+Opening the sluice lowers the stage by the same extra drainage as in the
+simulator ($0.23$\,m per day). Everything else --- sensor noise, field
+reports, outages, the reward and the casualty model --- is the simulator's own
+code, and the hidden risk of Eq.~\eqref{eq:risk} uses the real time to the next
+flood instead of the synthetic surge. One step is one day.
+
+\textit{Training regimes and conditions.} The agents of
+Section~\ref{sec:baselines} are evaluated in three training regimes: (i)
+trained in the simulator only, exactly as in the previous experiments; (ii)
+trained on 160 observed-rainfall episodes of the calibration period only; and
+(iii) trained on the simulator episodes plus these 160 observed episodes.
+Each regime is tested with the field reports and with the gauges only; in the
+gauges-only condition the agents are retrained without the report channel,
+and CONCLAVE then uses the library's committee for dense tabular input
+(logistic regression, random forest and extra trees). We report the return,
+the casualties, and the share of floods for which an alert is issued before
+the flood day.
+
 \subsection{NumPy-only edge runtime}\label{sec:runtime}
 Training needs scikit-learn and SciPy, but deciding does not. Every member of
 the decision committee is linear in the features, so a decision needs only the
@@ -974,8 +1053,9 @@ about $9\times$ smaller.
 This section presents the results in the order of the test beds in
 Table~\ref{tab:datasets}: tool routing, crisis triage, sequential control under
 connectivity loss and resource cost. These are followed by the comparison with
-other machine-learning-based agents, the ablation study of the committee, and
-the analysis of the uncertainty signal.
+other machine-learning-based agents, the external validation on observed
+rainfall, the ablation study of the committee, and the analysis of the
+uncertainty signal.
 
 \subsection{Tool routing and abstention}\label{sec:routing}
 \begin{table}[t]
@@ -1349,6 +1429,128 @@ open-vocabulary routing, these results also suggest a practical rule: when
 most tools will be added after deployment, the linear member should receive a
 larger weight.
 
+\subsection{External validation on observed rainfall}\label{sec:external}
+\begin{table*}[t]
+\centering
+\caption{External validation on 540 observed-rainfall episodes (NASA POWER,
+six districts of Bangladesh, 2015--2024), with the network down for $73\%$ of
+the steps. $G$ is the mean return, Cas.\ the mean casualties and Warned the
+share of floods alerted before the flood day. The reference agents do not
+learn, so they appear only once. Best ML value in each column in bold.}
+\label{tab:external}
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{@{}lrrrrrrrrr@{}}
+\toprule
+& \multicolumn{5}{c}{Trained in the simulator only (no retraining)} & \multicolumn{4}{c}{Simulator + 160 observed episodes of 1991--2014} \\
+\cmidrule(lr){2-6}\cmidrule(lr){7-10}
+& \multicolumn{3}{c}{Gauges + reports} & \multicolumn{2}{c}{Gauges only} & \multicolumn{2}{c}{Gauges + reports} & \multicolumn{2}{c}{Gauges only} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(lr){9-10}
+Agent & $G$ & Cas. & Warned (\%) & $G$ & Cas. & $G$ & Cas. & $G$ & Cas. \\
+\midrule
+\multicolumn{10}{@{}l}{\emph{Reference agents}} \\
+Expert with the true risk (upper bound) & 16.7 & 4.1 & 100.0 & 16.6 & 4.0 & --- & --- & --- & --- \\
+Cloud agent (expert, needs network) & $-$7.6 & 33.4 & 43.2 & $-$7.7 & 33.7 & --- & --- & --- & --- \\
+Gauge threshold rules & 7.3 & 16.5 & 67.4 & 7.1 & 16.8 & --- & --- & --- & --- \\
+\midrule
+\multicolumn{10}{@{}l}{\emph{Machine-learning-based agents (all offline)}} \\
+CBR ($k$-NN) & 3.1 & 10.2 & 89.7 & $-$25.7 & 14.6 & 11.3 & 5.2 & 4.9 & 14.5 \\
+Decision tree & $-$6.6 & 7.3 & 75.1 & $-$43.1 & \textbf{7.4} & 16.2 & \textbf{4.2} & 11.8 & \textbf{7.2} \\
+Naive Bayes & 12.5 & 9.1 & \textbf{97.4} & $-$38.1 & 35.1 & 12.6 & 7.7 & $-$20.2 & 47.5 \\
+Logistic regression & $-$3.7 & 8.1 & 93.0 & $-$36.2 & 10.7 & 15.2 & 4.7 & 0.2 & 13.7 \\
+MLP & \textbf{15.2} & 6.8 & 92.7 & $-$15.8 & 15.3 & 14.5 & 4.5 & 12.1 & 15.3 \\
+Random forest & 9.4 & 12.4 & 76.2 & \textbf{7.3} & 21.1 & 10.0 & 8.5 & \textbf{13.1} & 11.9 \\
+LightGBM & 5.6 & 6.8 & 83.5 & $-$1.0 & 13.8 & \textbf{16.2} & 4.3 & 13.0 & 8.3 \\
+Hard-vote ensemble & 13.3 & 8.3 & 89.7 & $-$16.0 & 19.5 & 13.3 & 4.7 & 12.3 & 12.4 \\
+\midrule
+\textbf{CONCLAVE} & 13.4 & \textbf{5.8} & \textbf{97.4} & $-$22.0 & 15.8 & 15.8 & 5.6 & 11.8 & 18.7 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{fig7_external.pdf}
+\caption{External validation on observed rainfall. (a) The Sylhet flood of
+May--June 2022 replayed from NASA POWER rainfall: daily rainfall (bars), the
+river stage of Eq.~\eqref{eq:api} and the actions of CONCLAVE trained only in
+the simulator, with the network down for $73\%$ of the steps; the alert is
+issued two days before the flood day. (b) Mean casualties per episode of every
+agent over the 540 test episodes (gauges and reports, $73\%$ offline); $G$ is
+the mean return and the dotted line marks the expert with the true risk.}
+\label{fig:external}
+\end{figure*}
+
+Table~\ref{tab:external} and Fig.~\ref{fig:external} report the external
+validation of Section~\ref{sec:extmethod}. Note that real weather is a strong
+distribution shift for these agents: every simulator episode contains exactly
+one surge, whereas real rainfall is persistent and has several peaks, the
+flood has already begun on the first day in 158 windows, and 109 windows have
+no flood at all. The test-period seasons are also wetter than the calibration
+seasons in the reanalysis (mean $18.2$ against $9.5$\,mm/day). One-step agreement with the expert falls from $96.3\%$ in the
+simulator to $79.7\%$ for CONCLAVE on the states of the real episodes. Four
+results can be stated.
+
+\textit{The offline advantage holds on real weather.} With the network down
+for $73\%$ of the steps, the cloud agent falls from $16.7$ to $-7.6$ and its
+casualties rise from $4.1$ to $33.4$ per episode, whereas every offline agent is
+unaffected. Over the same 540 episodes, CONCLAVE has $21.0$ more return
+(95\% CI $[18.0, 24.2]$) and $27.6$ fewer casualties than the cloud agent.
+
+\textit{The policy learned in simulation transfers when field reports are
+available.} Without any retraining, CONCLAVE keeps $80\%$ of the expert's
+return ($13.4$ against $16.7$), alerts $97.4\%$ of the floods before the flood
+day, and has the fewest casualties of all ML agents ($5.8$ per episode). Its
+casualties are significantly lower than those of every other ML agent (paired
+differences from $-0.9$ against the MLP and LightGBM to $-6.5$ against the
+random forest,
+all intervals excluding zero), and its return is significantly higher than
+that of five of the eight; it is statistically tied with the hard-vote
+ensemble and naive Bayes. The MLP obtains a slightly higher return
+($\Delta=-1.7$, CI $[-2.8,-0.7]$) at more casualties ($6.8$). The decision tree
+and logistic regression, which were among the best agents in the simulator
+(Table~\ref{tab:agents}), fall to negative returns: their decisions rely on
+sensor patterns that do not occur in real rainfall, while the committee also
+relies on the reports. In all nine settings of $(\kappa,q)$, with $65\%$ to
+$91\%$ of the windows flooding, CONCLAVE has the fewest casualties of the ML
+agents and ranks second or third in return.
+
+\textit{From the gauges alone, the simulator does not transfer.} When the
+report channel is removed and the agents are retrained on the gauges only, no
+agent trained in the simulator is better than the fixed gauge rules ($7.1$):
+the random forest matches them ($7.3$) and all others, CONCLAVE included
+($-22.0$), are worse. The simulator's gauge dynamics (a random-walk rainfall
+and a single surge) are too different from real rivers for a gauge-only policy
+to carry over. Training on the observed record helps, but the amount matters:
+trained on 160 observed episodes \emph{alone}, the tree learners do best (the
+decision tree $13.3$ and LightGBM $13.7$ with reports, against $-2.3$ for
+CONCLAVE), because the rare actions occur only 11 (supply requests) to 143
+(evacuations) times among the 6{,}400 observed decisions, and threshold models
+learn them from fewer examples than linear models. Adding the same 160 observed episodes to the
+simulator episodes closes most of the gap for every agent. CONCLAVE then reaches
+$15.8$ with reports, within $1$ point of the upper bound and statistically tied
+with the best agents (the decision tree and LightGBM, $16.2$; differences
+$-0.4$, CIs including zero), and $11.8$ from the gauges alone, above the rules, although with more
+casualties ($18.7$) than the tree learners ($7.2$ to $8.3$).
+
+\textit{The uncertainty signal recognises the shift.} On the states of the
+real episodes, the mean epistemic uncertainty of CONCLAVE is $1.9\times$ that
+in the simulator ($0.176$ against $0.092$), and it ranks the agent's own errors
+with an AUROC of $0.85$. With the epistemic threshold of the flood agent
+($0.35$), set in the simulator and not changed, the agent acts on $81\%$ of the real decisions with $90.4\%$ accuracy and
+escalates the remaining $19\%$, on which its accuracy would have been only
+$34.0\%$. The gate therefore hands over to a human mostly the decisions that
+the shift has made unreliable, without any recalibration.
+
+\textit{Case studies.} In the replay of the Sylhet flood of May 2022
+(Fig.~\ref{fig:external}a), CONCLAVE issues the alert two days before the river
+crosses the flood level, evacuates, opens the sluice at the peak and rescues
+the stranded, and obtains a return of $40.4$ against $41.3$ for the expert; the
+gauge rules alert one day before the flood but obtain $6.9$. For the Feni flood
+of August 2024, CONCLAVE alerts on the same day as the expert, two days before
+the flood ($33.1$ against $40.1$), whereas LightGBM alerts seven days after the
+flood has begun ($27.2$).
+
 \subsection{Ablation study: role of the committee}\label{sec:ablation}
 \begin{table}[t]
 \centering
@@ -1485,6 +1687,27 @@ measured basis for this hand-over: on HumAID, more than half of the incoming
 messages can be triaged automatically at $90\%$ precision, and the rest are
 passed to a human analyst.
 
+\subsection{What the external validation adds}
+The external validation changes the strength of the conclusions in two ways.
+First, the central claim of this paper --- that an offline committee keeps
+working when the network fails, while a cloud-dependent agent does not --- is
+now supported on real weather of the region for which the agent is intended:
+on observed rainfall of Bangladesh the cloud agent loses more than its whole
+return when the network is down, while CONCLAVE alerts almost every flood
+before it begins and has the fewest casualties of the ML agents. Second, the
+validation shows which part of the simulator result is transferable and which
+is not. The ranking of agents by return in the simulator is not preserved on
+real rainfall (the decision tree falls from second place to a negative
+return), and gauge-only policies learned in the simulator do not transfer at
+all. Both observations support the design principle of
+Section~\ref{sec:models}: an agent that combines evidence of different kinds,
+and that knows when its inputs are unfamiliar, degrades more gracefully than
+an agent that has fitted one kind of signal closely. They also give a practical
+recipe: a small amount of observed data from the target region, added to the
+simulator episodes, brings the best agents within about one point of the
+upper bound, and the
+uncertainty gate identifies the decisions that remain unreliable.
+
 \subsection{Complement to language-model agents}
 CONCLAVE does not replace language models in every task. A language model
 remains necessary when the action space is open-ended, when the task arrives in
@@ -1522,12 +1745,18 @@ $256$\,MB limit, but on-device latency and energy were estimated from host
 measurements with published throughput ratios. Measurements on physical
 Raspberry Pi and Jetson boards are planned as the next step.
 
-\textit{Simulated sequential environment.} The flood-response environment has
-hand-specified dynamics, and its expert controller is a rule-based policy
-rather than an optimal one. The availability result does not depend on these
-details, but absolute returns are specific to the simulator. Calibrating the
-simulator with historical river-gauge and response records from flood-prone
-districts is an important extension.
+\textit{Simulated river response.} The external validation uses observed
+rainfall, but the river stage is still derived from it by an antecedent
+precipitation index, the field reports are generated from templates, and the
+expert controller is a rule-based policy rather than an optimal one. The
+validation also shows that gauge-only policies learned in the simulator do not
+transfer to real rainfall, and the MERRA-2 rainfall of the test period is wetter
+than that of the calibration period, a known inhomogeneity of reanalysis
+products. Replacing the index by observed water levels of the Flood
+Forecasting and Warning Centre of Bangladesh, rain-gauge records of the
+Bangladesh Meteorological Department and real field messages is the next step;
+the replay environment is written so that any observed stage series can be
+used directly.
 
 \textit{Lexical text representation.} Hashed n-grams capture spelling and
 local word order but not compositional meaning, so negation and paraphrase
@@ -1552,7 +1781,10 @@ $1.8$ F1 points of RoBERTa with a $14\times$ smaller model, and keeps its
 performance when $73\%$ of the steps are offline, while a cloud-dependent agent
 collapses from $35.8$ to $-127.3$. Compared with eight other
 machine-learning-based agents, it achieves the highest closed-loop return and
-the fewest casualties, and with the edge runtime it needs only $31$\,MB of
+the fewest casualties in simulation; on observed rainfall of six districts of
+Bangladesh, without retraining, it keeps $80\%$ of the expert's return and the
+fewest casualties, and its uncertainty gate passes the decisions made
+unreliable by the shift to a human. With the edge runtime it needs only $31$\,MB of
 memory and an estimated $1.7$\,ms per decision on a Raspberry Pi Zero~2\,W. We
 conclude that, for bounded and recurring decisions such as those of flood
 response, ``agentic'' describes a control architecture rather than a model
@@ -1562,8 +1794,10 @@ uncertainty-aware autonomy without the internet and on inexpensive hardware.
 \section*{Reproducibility and Data Availability}
 All code, seeds, result files and figure-generation scripts are released under
 the Apache-2.0 licence. The two public datasets are downloaded from their
-original sources by \texttt{scripts/fetch\_data.py}. Every result in this paper
-is regenerated by eight scripts in \texttt{experiments/}; each writes a JSON
+original sources by \texttt{scripts/fetch\_data.py}, and the NASA POWER
+rainfall used for external validation is included in
+\texttt{data/external/}. Every result in this paper
+is regenerated by nine scripts in \texttt{experiments/}; each writes a JSON
 file that records the platform, seed and code version, and a test suite checks
 every number quoted in the paper against those files. The complete set of
 experiments takes about one hour on the 2-core machine described in
