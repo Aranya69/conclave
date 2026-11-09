@@ -625,6 +625,67 @@ for f in ["fig1_availability.png", "fig6_ml_agents.png", "fig5_routing.png", "fi
     display(Image(f"paper/figures/{f}", width=850))
 """)
 
+# =====================================================================  external validation
+md(r"""
+### 4.4 External validation on observed rainfall (NASA POWER, Bangladesh)
+Everything above happens inside our own simulator. Here the **same agent, trained only in the simulator and not retrained**, is run on episodes driven by *observed* daily rainfall (NASA POWER, MERRA-2) at six flood-prone districts of Bangladesh. The two conversions — quantile mapping of rainfall onto the sensor scale and an antecedent precipitation index for the river stage — are fitted on 1991–2014 only; the test episodes are 2015–2024 (6 districts × 10 years × 9 windows = 540 episodes). The data file is in `data/external/` (no account needed to download it again).
+""")
+code(r"""
+from experiments.exp9_external_validation import (load_rain, synthetic_rain, fit_forcing, build_episodes,
+                                                   rollout, warning_stats, MAIN, STATIONS)
+rain = load_rain()
+print(rain.shape, "days x districts |", rain.index.min().date(), "to", rain.index.max().date(),
+      "| missing values:", int(rain.isna().sum().sum()))
+fig, ax = plt.subplots(1, 2, figsize=(11, 3.4))
+rain.groupby(rain.index.year).sum().plot(ax=ax[0], lw=1.2)
+ax[0].set_ylabel("annual rainfall (mm)"); ax[0].set_title("Annual rainfall per district (NASA POWER)")
+ax[0].axvspan(2014.5, 2024.5, color="orange", alpha=0.12, label="test years")
+ax[0].legend(fontsize=7, ncol=2)
+mon = rain[rain.index.year >= 2015].groupby(rain[rain.index.year >= 2015].index.month).mean()
+mon.plot.bar(ax=ax[1], width=0.85); ax[1].set_ylabel("mean daily rainfall (mm)")
+ax[1].set_title("Seasonal cycle, 2015-2024"); ax[1].legend(fontsize=7, ncol=2)
+plt.tight_layout(); plt.show()
+""")
+code(r"""
+syn = synthetic_rain()
+fm = fit_forcing(rain, *MAIN, syn)
+eps = build_episodes(rain, fm)
+onsets = [e["onset"] for e in eps]
+print(f"{len(eps)} real episodes | flood inside the window: {sum(o is not None for o in onsets)} "
+      f"| already flooded on day 0: {sum(o == 0 for o in onsets)} | no flood: {sum(o is None for o in onsets)}")
+print("forcing model:", {k: round(v, 3) for k, v in fm.as_dict().items()})
+
+res = {"CONCLAVE (trained in simulation)": rollout("brain", brain_c, fz_c, eps, 0.5, True),
+       "Gauge threshold rules": rollout("rules", None, None, eps, 0.5, True),
+       "Cloud agent (needs network)": rollout("cloud", None, None, eps, 0.5, True),
+       "Expert with the true risk": rollout("expert", None, None, eps, 0.5, True)}
+ext = pd.DataFrame([{"agent": k, "return": round(np.mean(u["returns"]), 1),
+                     "casualties": round(np.mean(u["casualties"]), 1),
+                     "floods alerted in advance (%)": round(warning_stats(u)["warned_in_time_pct"], 1)}
+                    for k, u in res.items()]).set_index("agent")
+display(Markdown("**540 observed-rainfall episodes, 2015-2024, network down for ~73% of the steps**"))
+display(ext)
+""")
+code(r"""
+r9 = json.load(open("results/exp9_external_validation.json"))
+names = {1: "sim-trained, gauges + reports", 2: "sim-trained, gauges only",
+         5: "sim + observed 1991-2014, gauges + reports", 6: "sim + observed 1991-2014, gauges only"}
+tab = pd.DataFrame([{"agent": r["agent"], **{f"{v} (return)": round(r[f"return_c{k}_73"], 1)
+                     for k, v in names.items() if f"return_c{k}_73" in r},
+                     "casualties (sim-trained, reports)": round(r["casualties_c1_73"], 1)}
+                    for r in r9["rows"]]).set_index("agent")
+display(Markdown("**Table XI of the paper: external validation for all agents and training regimes**"))
+display(tab)
+u = r9["accuracy"]["reports"]["conclave_uncertainty"]
+print(f"epistemic uncertainty: simulator {r9['accuracy']['synthetic_mean_epistemic']:.3f} -> real {u['mean_epistemic']:.3f}; "
+      f"AUROC for its own errors {u['auroc_epistemic_flags_errors']:.2f}; "
+      f"gate acts on {u['gate_act_pct']:.0f}% with {100 * u['accuracy_when_gate_acts']:.1f}% accuracy")
+display(Image("paper/figures/fig7_external.png", width=900))
+""")
+md(r"""
+**Reading the external validation.** On real weather the cloud agent collapses when the network is down, while CONCLAVE — trained only in the simulator — keeps about 80% of the expert's return, alerts almost every flood before it begins and has the fewest casualties of all ML agents. The validation also shows a real limit: from the gauges alone, policies learned in the simulator do not transfer; adding a small amount of observed data (160 episodes of 1991–2014) to the training set fixes most of this. The uncertainty signal roughly doubles on real data and flags the agent's own errors, so the gate hands the unreliable decisions to a human.
+""")
+
 # =====================================================================  edge
 md(r"""
 ## 5. Edge deployment: the NumPy-only runtime
@@ -686,6 +747,7 @@ md(r"""
 * **Working process.** Hashed TF–IDF text features and standardised sensors feed a heterogeneous committee; the spread of its members' posteriors gives aleatoric and epistemic uncertainty; a calibrated gate decides whether to act, gather, abstain or escalate; a safety layer keeps irreversible actions under control.
 * **Without internet.** The local committee keeps working when the network is down, while a cloud-dependent agent collapses (paper: return 33.5 vs −127.3 with 73% of steps offline).
 * **Against other ML agents.** CONCLAVE gives the highest closed-loop return and the fewest casualties among nine ML-based agents (paper, 120 episodes, paired bootstrap).
+* **External validation.** On 540 episodes of observed rainfall of Bangladesh (NASA POWER, 2015–2024), the agent trained only in the simulator keeps about 80% of the expert's return and has the fewest casualties of the ML agents; gauge-only policies need some observed training data to transfer.
 * **Low-cost hardware.** The exported agent is about 128 KB; the NumPy-only runtime needs about 32 MB of RAM and an estimated 1.7 ms per decision on a Raspberry Pi Zero 2 W.
 
 To reproduce every number of the paper at full scale, run `python scripts/run_all.py` in the repository (about one hour on a 2-core CPU).
